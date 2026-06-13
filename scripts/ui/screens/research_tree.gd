@@ -3,31 +3,8 @@ extends Control
 
 signal back_pressed
 
-const NODE_SIZE := 56.0
-
-var _tree_content: TreeCanvas
-var _canvas_bg: Control
+var _graph: TreeGraph
 var _compute_label: Label
-var _node_buttons := {}  # id -> Button
-var _node_labels := {}   # id -> Label
-var _dragging := false
-var _initialized_pan := false
-
-class TreeCanvas extends Control:
-	var edges: Array = []  # Array of { "a": Vector2, "b": Vector2, "color": Color }
-
-	func _draw() -> void:
-		for e in edges:
-			draw_polyline(_bezier(e["a"], e["b"]), e["color"], 3.0, true)
-
-	func _bezier(a: Vector2, b: Vector2) -> PackedVector2Array:
-		var c1 := a + Vector2(0, (b.y - a.y) * 0.5)
-		var c2 := b - Vector2(0, (b.y - a.y) * 0.5)
-		var pts := PackedVector2Array()
-		for i in 17:
-			var t := float(i) / 16.0
-			pts.append(a.bezier_interpolate(c1, c2, b, t))
-		return pts
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -38,28 +15,19 @@ func _ready() -> void:
 
 	layout.add_child(_build_header())
 
-	var viewport := Control.new()
-	viewport.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	viewport.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	viewport.clip_contents = true
-	layout.add_child(viewport)
-
-	_canvas_bg = Control.new()
-	_canvas_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_canvas_bg.gui_input.connect(_on_canvas_input)
-	_canvas_bg.resized.connect(_on_canvas_resized)
-	viewport.add_child(_canvas_bg)
-
-	_tree_content = TreeCanvas.new()
-	_canvas_bg.add_child(_tree_content)
-
-	_build_tree()
+	_graph = TreeGraph.new()
+	_graph.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_graph.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_graph.node_provider = _nodes
+	_graph.action_handler = _do_action
+	layout.add_child(_graph)
+	_graph.build()
 
 	Events.research_completed.connect(_on_research_completed)
 	Events.resource_changed.connect(_on_resource_changed)
 	visibility_changed.connect(_on_visibility_changed)
 
-	_refresh_all()
+	_refresh()
 
 func _build_header() -> Control:
 	var panel := PanelContainer.new()
@@ -89,139 +57,98 @@ func _build_header() -> Control:
 
 	return panel
 
-func _build_tree() -> void:
-	for r in ResearchDB.get_list():
-		var pos: Vector2 = r["pos"]
-
-		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(NODE_SIZE, NODE_SIZE)
-		btn.size = Vector2(NODE_SIZE, NODE_SIZE)
-		btn.position = pos - Vector2(NODE_SIZE, NODE_SIZE) / 2.0
-		btn.clip_text = true
-		btn.pressed.connect(_on_node_pressed.bind(r["id"]))
-		_tree_content.add_child(btn)
-		_node_buttons[r["id"]] = btn
-
-		var label := Label.new()
-		label.position = pos + Vector2(-60, NODE_SIZE / 2.0 + 4)
-		label.size = Vector2(120, 40)
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		label.add_theme_font_size_override("font_size", 12)
-		_tree_content.add_child(label)
-		_node_labels[r["id"]] = label
-
-func _on_canvas_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		_dragging = event.pressed
-	elif event is InputEventMouseMotion and _dragging:
-		_tree_content.position += event.relative
-
-func _on_canvas_resized() -> void:
-	if _initialized_pan:
-		return
-	_initialized_pan = true
-	_tree_content.position = _canvas_bg.size / 2.0 + Vector2(0, _canvas_bg.size.y * 0.3)
-
-func _on_node_pressed(id: String) -> void:
-	if not Research.research(id):
-		return
-	var rname := String(Research.get_def(id)["name"])
-	Events.log_message.emit("> ТЕХНОЛОГИЯ ВНЕДРЕНА: %s" % rname, "sys")
-	_refresh_all()
-
-func _on_research_completed(_id: String) -> void:
-	_refresh_all()
-
-func _on_resource_changed(_id: String, _value: float) -> void:
-	_refresh_all()
-
-func _on_visibility_changed() -> void:
-	if visible:
-		_refresh_all()
-
-func _refresh_all() -> void:
-	_compute_label.text = Format.num(GameState.get_resource("compute"))
-
+func _nodes() -> Array:
 	var branch_colors := {}
 	for b in ResearchDB.get_branches():
 		branch_colors[b["id"]] = b["color"]
 
-	var defs := {}
+	var result := []
 	for r in ResearchDB.get_list():
-		defs[r["id"]] = r
+		var state := TreeGraph.NodeState.LOCKED
+		if Research.is_owned(r["id"]):
+			state = TreeGraph.NodeState.OWNED
+		elif not r.get("stub", false) and Research.is_available(r["id"]):
+			state = TreeGraph.NodeState.AVAILABLE
 
-	var edges := []
-	for r in ResearchDB.get_list():
-		var branch_color: Color = branch_colors.get(r["branch"], Palette.TEXT_3)
-		_refresh_node(r["id"], branch_color)
-		for p in r.get("requires", []):
-			if defs.has(p):
-				var alpha := 0.9 if Research.is_owned(r["id"]) else 0.35
-				edges.append({ "a": defs[p]["pos"], "b": r["pos"], "color": Color(branch_color, alpha) })
+		result.append({
+			"id": r["id"], "title": r["name"], "desc": String(r.get("desc", "")),
+			"pos": r["pos"], "color": branch_colors.get(r["branch"], Palette.TEXT_3),
+			"state": state,
+			"cost_text": _cost_text(r),
+			"effect_text": _effect_text(r),
+			"req_text": _req_text(r),
+			"action_label": "Изучить",
+			"requires": r.get("requires", []),
+		})
+	return result
 
-	_tree_content.edges = edges
-	_tree_content.queue_redraw()
+func _cost_text(r: Dictionary) -> String:
+	var cost: Dictionary = r.get("cost", {})
+	if cost.is_empty():
+		return "—"
+	var parts := PackedStringArray()
+	for res_id in cost.keys():
+		parts.append("%s %s" % [Format.num(cost[res_id]), _res_short(res_id)])
+	return ", ".join(parts)
 
-func _refresh_node(id: String, branch_color: Color) -> void:
-	var def := Research.get_def(id)
-	var btn: Button = _node_buttons[id]
-	var label: Label = _node_labels[id]
+func _effect_text(r: Dictionary) -> String:
+	var eff: Dictionary = r.get("effects", {})
+	var parts := PackedStringArray()
+	if eff.has("mult_production"):
+		var mp: Dictionary = eff["mult_production"]
+		for res_id in mp.keys():
+			parts.append("%s ×%s" % [_res_name(res_id), Format.num(float(mp[res_id]))])
+	if eff.has("mult_building"):
+		var mb: Dictionary = eff["mult_building"]
+		for b_id in mb.keys():
+			parts.append("%s ×%s" % [_building_name(b_id), Format.num(float(mb[b_id]))])
+	if eff.has("add_base_energy"):
+		parts.append("+%s базовой энергии" % Format.num(float(eff["add_base_energy"])))
+	if parts.is_empty():
+		return "—"
+	return ", ".join(parts)
 
-	var sb := StyleBoxFlat.new()
-	sb.set_corner_radius_all(int(NODE_SIZE / 2.0))
+func _req_text(r: Dictionary) -> String:
+	var names := PackedStringArray()
+	for p in r.get("requires", []):
+		names.append(String(Research.get_def(p).get("name", p)))
+	return ", ".join(names)
 
-	if def.get("stub", false):
-		sb.bg_color = Palette.SURFACE
-		sb.border_color = Palette.LINE
-		sb.set_border_width_all(2)
-		btn.text = "🔒"
-		btn.disabled = true
-		btn.modulate.a = 0.5
-		label.add_theme_color_override("font_color", Palette.TEXT_3)
-	elif Research.is_owned(id):
-		sb.bg_color = branch_color
-		btn.text = "✓"
-		btn.disabled = true
-		btn.modulate.a = 1.0
-		label.add_theme_color_override("font_color", branch_color)
-	elif Research.is_available(id):
-		sb.bg_color = Palette.SURFACE_2
-		sb.border_color = branch_color
-		sb.set_border_width_all(3)
-		btn.text = ""
-		btn.disabled = false
-		btn.modulate.a = 1.0 if Research.can_afford(id) else 0.6
-		label.add_theme_color_override("font_color", Palette.TEXT)
-	else:
-		sb.bg_color = Palette.SURFACE
-		sb.border_color = Palette.LINE
-		sb.set_border_width_all(2)
-		btn.text = ""
-		btn.disabled = true
-		btn.modulate.a = 0.5
-		label.add_theme_color_override("font_color", Palette.TEXT_3)
-
-	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
-		btn.add_theme_stylebox_override(state, sb)
-
-	btn.tooltip_text = _tooltip_text(def)
-	label.text = String(def.get("name", id))
-
-func _tooltip_text(def: Dictionary) -> String:
-	var lines := PackedStringArray()
-	lines.append(String(def.get("name", "")))
-	lines.append(String(def.get("desc", "")))
-	var cost: Dictionary = def.get("cost", {})
-	if not cost.is_empty():
-		var parts := PackedStringArray()
-		for res_id in cost.keys():
-			parts.append("%s %s" % [Format.num(cost[res_id]), _res_short(res_id)])
-		lines.append("Цена: " + ", ".join(parts))
-	return "\n".join(lines)
+func _do_action(id: String) -> bool:
+	if not Research.research(id):
+		return false
+	var rname := String(Research.get_def(id)["name"])
+	Events.log_message.emit("> ТЕХНОЛОГИЯ ВНЕДРЕНА: %s" % rname, "sys")
+	return true
 
 func _res_short(res_id: String) -> String:
 	var defs := ResourcesDB.get_defs()
 	if defs.has(res_id):
 		return String(defs[res_id]["short"])
 	return res_id
+
+func _res_name(res_id: String) -> String:
+	var defs := ResourcesDB.get_defs()
+	if defs.has(res_id):
+		return String(defs[res_id]["name"])
+	return res_id
+
+func _building_name(b_id: String) -> String:
+	for b in BuildingsDB.get_list():
+		if b["id"] == b_id:
+			return String(b["name"])
+	return b_id
+
+func _on_research_completed(_id: String) -> void:
+	_refresh()
+
+func _on_resource_changed(_id: String, _value: float) -> void:
+	_refresh()
+
+func _on_visibility_changed() -> void:
+	if visible:
+		_refresh()
+
+func _refresh() -> void:
+	_compute_label.text = Format.num(GameState.get_resource("compute"))
+	_graph.refresh()

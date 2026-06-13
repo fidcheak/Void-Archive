@@ -7,6 +7,7 @@ var _core_rect: ColorRect
 var _crt_material: ShaderMaterial
 var _ops_screen: Control
 var _tree_screen: ResearchTreeScreen
+var _prestige_screen: PrestigeScreen
 
 func _ready() -> void:
 	theme = ThemeBuilder.build()
@@ -60,17 +61,14 @@ func _ready() -> void:
 	tree_button.pressed.connect(_on_tree_button_pressed)
 	side.add_child(tree_button)
 
-	var tabs := TabContainer.new()
-	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	side.add_child(tabs)
+	var prestige_button := Button.new()
+	prestige_button.text = "⟲ ВРЕМЕННАЯ ЛИНИЯ"
+	prestige_button.pressed.connect(_on_prestige_button_pressed)
+	side.add_child(prestige_button)
 
 	var buildings_panel := BuildingsPanel.new()
-	buildings_panel.name = "Здания"
-	tabs.add_child(buildings_panel)
-
-	var prestige_panel := PrestigePanel.new()
-	prestige_panel.name = "Временная линия"
-	tabs.add_child(prestige_panel)
+	buildings_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	side.add_child(buildings_panel)
 
 	var terminal := TerminalPanel.new()
 	terminal.custom_minimum_size = Vector2(0, TERMINAL_HEIGHT)
@@ -81,6 +79,12 @@ func _ready() -> void:
 	_tree_screen.visible = false
 	_tree_screen.back_pressed.connect(_on_tree_back_pressed)
 	add_child(_tree_screen)
+
+	_prestige_screen = PrestigeScreen.new()
+	_prestige_screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_prestige_screen.visible = false
+	_prestige_screen.back_pressed.connect(_on_prestige_back_pressed)
+	add_child(_prestige_screen)
 
 	_build_crt_overlay()
 
@@ -94,6 +98,14 @@ func _on_tree_button_pressed() -> void:
 
 func _on_tree_back_pressed() -> void:
 	_tree_screen.visible = false
+	_ops_screen.visible = true
+
+func _on_prestige_button_pressed() -> void:
+	_ops_screen.visible = false
+	_prestige_screen.visible = true
+
+func _on_prestige_back_pressed() -> void:
+	_prestige_screen.visible = false
 	_ops_screen.visible = true
 
 func _on_tick(_delta: float) -> void:
