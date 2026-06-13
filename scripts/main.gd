@@ -76,6 +76,9 @@ func _ready() -> void:
 	buildings_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	side.add_child(buildings_panel)
 
+	var ability_bar := AbilityBar.new()
+	layout.add_child(ability_bar)
+
 	var terminal := TerminalPanel.new()
 	terminal.custom_minimum_size = Vector2(0, TERMINAL_HEIGHT)
 	layout.add_child(terminal)

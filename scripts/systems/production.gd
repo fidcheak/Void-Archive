@@ -3,7 +3,7 @@ class_name Production
 const BASE_ENERGY := 10.0
 
 static func recompute() -> Dictionary:
-	var base_energy := BASE_ENERGY + Research.get_base_energy_bonus()
+	var base_energy := BASE_ENERGY + Research.get_base_energy_bonus() + Abilities.get_energy_bonus()
 	var e_prod := base_energy
 	var e_dem := 0.0
 	for b in BuildingsDB.get_list():
@@ -33,7 +33,7 @@ static func recompute() -> Dictionary:
 
 	var global_mult := Corruption.get_production_bonus_mult() * Anomalies.get_active_production_mult() * Prestige.get_production_mult()
 	for res in rates.keys():
-		rates[res] = float(rates[res]) * global_mult
+		rates[res] = float(rates[res]) * global_mult * Abilities.get_production_mult(res)
 
 	GameState.production_rates = rates
 	GameLoop.current_data_rate = float(rates.get("data", 0.0))

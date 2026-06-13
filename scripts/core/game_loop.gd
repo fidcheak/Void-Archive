@@ -9,6 +9,7 @@ var _autosave_timer := 0.0
 func _process(delta: float) -> void:
 	var dt: float = min(delta, MAX_DELTA)   # кламп от свёрнутой вкладки
 	Anomalies.update(dt)
+	Abilities.update(dt)
 	Production.update(dt)
 	Mining.update(dt)
 	Corruption.update(dt)

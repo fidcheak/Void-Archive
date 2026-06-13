@@ -97,16 +97,29 @@ func _effect_text(r: Dictionary) -> String:
 	if eff.has("mult_production"):
 		var mp: Dictionary = eff["mult_production"]
 		for res_id in mp.keys():
-			parts.append("%s ×%s" % [_res_name(res_id), Format.num(float(mp[res_id]))])
+			var factor := float(mp[res_id])
+			var tag := " (дебафф)" if factor < 1.0 else ""
+			parts.append("%s ×%s%s" % [_res_name(res_id), Format.num(factor), tag])
 	if eff.has("mult_building"):
 		var mb: Dictionary = eff["mult_building"]
 		for b_id in mb.keys():
 			parts.append("%s ×%s" % [_building_name(b_id), Format.num(float(mb[b_id]))])
 	if eff.has("add_base_energy"):
-		parts.append("+%s базовой энергии" % Format.num(float(eff["add_base_energy"])))
+		var bonus := float(eff["add_base_energy"])
+		var tag := " (дебафф)" if bonus < 0.0 else ""
+		parts.append("%+d базовой энергии%s" % [int(bonus), tag])
+	var ability := _ability_unlock(r["id"])
+	if not ability.is_empty():
+		parts.append("Открывает: %s" % String(ability["name"]))
 	if parts.is_empty():
 		return "—"
 	return ", ".join(parts)
+
+func _ability_unlock(node_id: String) -> Dictionary:
+	for a in AbilitiesDB.get_list():
+		if String(a.get("unlocked_by", "")) == node_id:
+			return a
+	return {}
 
 func _req_text(r: Dictionary) -> String:
 	if Research.is_excluded(r["id"]):
