@@ -1,36 +1,44 @@
 class_name CryptoTracker
 extends PanelContainer
 
-var _expanded := false
-var _toggle_button: Button
-var _list: VBoxContainer
+signal mining_pressed
+
 var _rows := {}  # id -> { "balance": Label, "rate": Label }
 
 func _ready() -> void:
-	anchor_left = 0.0
-	anchor_top = 0.0
-	anchor_right = 0.0
-	anchor_bottom = 0.0
-	offset_left = 8.0
-	offset_top = 80.0
+	custom_minimum_size = Vector2(240, 0)
+	size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	var margin := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_%s" % side, 12)
+	add_child(margin)
 
 	var box := VBoxContainer.new()
-	add_child(box)
+	box.add_theme_constant_override("separation", 10)
+	margin.add_child(box)
 
-	_toggle_button = Button.new()
-	_toggle_button.pressed.connect(_on_toggle_pressed)
-	box.add_child(_toggle_button)
+	var header := Label.new()
+	header.text = "КРИПТА"
+	header.add_theme_color_override("font_color", Palette.CRYPTO)
+	box.add_child(header)
+	box.add_child(HSeparator.new())
 
-	_list = VBoxContainer.new()
-	_list.add_theme_constant_override("separation", 8)
-	box.add_child(_list)
+	var list := VBoxContainer.new()
+	list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 8)
+	box.add_child(list)
 
 	for c in CryptoDB.get_list():
-		_list.add_child(_build_row(c))
+		list.add_child(_build_row(c))
+
+	var mining_btn := Button.new()
+	mining_btn.text = "⛏ КРИПТО-ФЕРМА"
+	mining_btn.pressed.connect(func(): mining_pressed.emit())
+	box.add_child(mining_btn)
 
 	Events.tick.connect(_on_tick)
 
-	_update_visibility()
 	_refresh()
 
 func _build_row(c: Dictionary) -> Control:
@@ -53,14 +61,6 @@ func _build_row(c: Dictionary) -> Control:
 
 	_rows[c["id"]] = { "balance": balance_label, "rate": rate_label }
 	return row
-
-func _on_toggle_pressed() -> void:
-	_expanded = not _expanded
-	_update_visibility()
-
-func _update_visibility() -> void:
-	_list.visible = _expanded
-	_toggle_button.text = "КРИПТА ◂" if _expanded else "КРИПТА ▸"
 
 func _on_tick(_delta: float) -> void:
 	_refresh()

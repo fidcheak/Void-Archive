@@ -87,39 +87,17 @@ func _build_row(b: Dictionary) -> Control:
 func _effect_text(b: Dictionary) -> String:
 	var parts := PackedStringArray()
 	for res_id in b.get("produces", {}).keys():
-		parts.append("+%s %s/сек" % [Format.num(b["produces"][res_id]), _res_name(res_id)])
+		parts.append("+%s %s/сек" % [Format.num(b["produces"][res_id]), Labels.res_name(res_id).to_lower()])
 	for res_id in b.get("consumes", {}).keys():
-		parts.append("-%s %s/сек" % [Format.num(b["consumes"][res_id]), _res_name(res_id)])
+		parts.append("-%s %s/сек" % [Format.num(b["consumes"][res_id]), Labels.res_name(res_id).to_lower()])
 	return " · ".join(parts)
 
 func _cost_text(id: String) -> String:
 	var c := Buildings.cost(id)
 	var parts := PackedStringArray()
 	for res_id in c.keys():
-		parts.append("%s %s" % [Format.num(c[res_id]), _res_short(res_id)])
+		parts.append("%s %s" % [Format.num(c[res_id]), Labels.res_short(res_id)])
 	return " · ".join(parts)
-
-func _res_name(res_id: String) -> String:
-	var defs := ResourcesDB.get_defs()
-	if defs.has(res_id):
-		return String(defs[res_id]["name"]).to_lower()
-	if res_id == "compute":
-		return "вычислений"
-	var cdef := CryptoDB.get_def(res_id)
-	if not cdef.is_empty():
-		return String(cdef["name"]).to_lower()
-	return res_id
-
-func _res_short(res_id: String) -> String:
-	var defs := ResourcesDB.get_defs()
-	if defs.has(res_id):
-		return String(defs[res_id]["short"])
-	if res_id == "compute":
-		return "ВЫЧ"
-	var cdef := CryptoDB.get_def(res_id)
-	if not cdef.is_empty():
-		return String(cdef["short"])
-	return res_id
 
 func _research_name(id: String) -> String:
 	return String(Research.get_def(id).get("name", id))

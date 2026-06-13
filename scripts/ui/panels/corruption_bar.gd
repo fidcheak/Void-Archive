@@ -1,15 +1,12 @@
 class_name CorruptionBar
 extends PanelContainer
 
-const BAR_WIDTH := 220.0
-
-const BAR_HEIGHT := 10.0
+const BAR_HEIGHT := 18.0
 
 var _label: Label
 var _pct_label: Label
-var _bar_bg: Panel
-var _bar_fill: Panel
-var _bar_fill_style: StyleBoxFlat
+var _bar: ProgressBar
+var _fill_style: StyleBoxFlat
 var _purge_button: Button
 
 func _ready() -> void:
@@ -21,6 +18,7 @@ func _ready() -> void:
 	add_child(margin)
 
 	var box := HBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
 	margin.add_child(box)
 
 	_label = Label.new()
@@ -28,24 +26,27 @@ func _ready() -> void:
 	_label.add_theme_color_override("font_color", Palette.AMBER)
 	box.add_child(_label)
 
-	_bar_bg = Panel.new()
-	_bar_bg.custom_minimum_size = Vector2(BAR_WIDTH, BAR_HEIGHT)
-	_bar_bg.add_theme_stylebox_override("panel", _bar_style(Palette.LINE, BAR_HEIGHT))
-	box.add_child(_bar_bg)
+	_bar = ProgressBar.new()
+	_bar.min_value = 0.0
+	_bar.max_value = 100.0
+	_bar.show_percentage = false
+	_bar.custom_minimum_size = Vector2(0, BAR_HEIGHT)
+	_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
-	_bar_fill = Panel.new()
-	_bar_fill.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
-	_bar_fill_style = _bar_style(Palette.OK, BAR_HEIGHT)
-	_bar_fill.add_theme_stylebox_override("panel", _bar_fill_style)
-	_bar_bg.add_child(_bar_fill)
+	var bg_style := StyleBoxFlat.new()
+	bg_style.bg_color = Palette.LINE
+	bg_style.set_corner_radius_all(int(BAR_HEIGHT / 2.0))
+	_bar.add_theme_stylebox_override("background", bg_style)
+
+	_fill_style = StyleBoxFlat.new()
+	_fill_style.bg_color = Palette.OK
+	_fill_style.set_corner_radius_all(int(BAR_HEIGHT / 2.0))
+	_bar.add_theme_stylebox_override("fill", _fill_style)
+
+	box.add_child(_bar)
 
 	_pct_label = Label.new()
 	box.add_child(_pct_label)
-
-	var spacer := Label.new()
-	spacer.text = "   "
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_child(spacer)
 
 	_purge_button = Button.new()
 	_purge_button.pressed.connect(_on_purge_pressed)
@@ -72,16 +73,10 @@ func _refresh() -> void:
 	elif corruption > 0.0:
 		color = Palette.OK.lerp(Palette.WARN, corruption / 0.5)
 
-	_bar_fill_style.bg_color = color
-	_bar_fill.size = Vector2(BAR_WIDTH * clampf(integrity, 0.0, 1.0), BAR_HEIGHT)
+	_fill_style.bg_color = color
+	_bar.value = integrity * 100.0
 	_pct_label.text = "%d%%" % int(round(integrity * 100.0))
 	_pct_label.add_theme_color_override("font_color", color)
 
-	_purge_button.text = "Стабилизировать (%s ВЫЧ)" % Format.num(Corruption.purge_cost())
+	_purge_button.text = "Стабилизировать (%s %s)" % [Format.num(Corruption.purge_cost()), Labels.res_short("compute")]
 	_purge_button.disabled = not Corruption.can_purge()
-
-func _bar_style(color: Color, height: float) -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = color
-	sb.set_corner_radius_all(int(height / 2.0))
-	return sb

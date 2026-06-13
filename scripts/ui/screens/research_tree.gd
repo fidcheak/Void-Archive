@@ -48,7 +48,7 @@ func _build_header() -> Control:
 	box.add_child(title)
 
 	var compute_name := Label.new()
-	compute_name.text = "ВЫЧИСЛЕНИЯ:"
+	compute_name.text = "%s:" % Labels.res_name("compute").to_upper()
 	compute_name.add_theme_color_override("font_color", Palette.COMPUTE)
 	box.add_child(compute_name)
 
@@ -88,7 +88,7 @@ func _cost_text(r: Dictionary) -> String:
 		return "—"
 	var parts := PackedStringArray()
 	for res_id in cost.keys():
-		parts.append("%s %s" % [Format.num(cost[res_id]), _res_short(res_id)])
+		parts.append("%s %s" % [Format.num(cost[res_id]), Labels.res_short(res_id)])
 	return ", ".join(parts)
 
 func _effect_text(r: Dictionary) -> String:
@@ -99,7 +99,7 @@ func _effect_text(r: Dictionary) -> String:
 		for res_id in mp.keys():
 			var factor := float(mp[res_id])
 			var tag := " (дебафф)" if factor < 1.0 else ""
-			parts.append("%s ×%s%s" % [_res_name(res_id), Format.num(factor), tag])
+			parts.append("%s ×%s%s" % [Labels.res_name(res_id), Format.num(factor), tag])
 	if eff.has("mult_building"):
 		var mb: Dictionary = eff["mult_building"]
 		for b_id in mb.keys():
@@ -140,18 +140,6 @@ func _do_action(id: String) -> bool:
 	var rname := String(Research.get_def(id)["name"])
 	Events.log_message.emit("> ТЕХНОЛОГИЯ ВНЕДРЕНА: %s" % rname, "sys")
 	return true
-
-func _res_short(res_id: String) -> String:
-	var defs := ResourcesDB.get_defs()
-	if defs.has(res_id):
-		return String(defs[res_id]["short"])
-	return res_id
-
-func _res_name(res_id: String) -> String:
-	var defs := ResourcesDB.get_defs()
-	if defs.has(res_id):
-		return String(defs[res_id]["name"])
-	return res_id
 
 func _building_name(b_id: String) -> String:
 	for b in BuildingsDB.get_list():

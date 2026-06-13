@@ -204,11 +204,8 @@ func _build_upgrade_row(u: Dictionary) -> Control:
 func _cost_text(cost: Dictionary) -> String:
 	var parts := PackedStringArray()
 	for cid in cost.keys():
-		parts.append("%s %s" % [Format.num(cost[cid]), _crypto_short(cid)])
+		parts.append("%s %s" % [Format.num(cost[cid]), Labels.res_short(cid)])
 	return ", ".join(parts)
-
-func _crypto_short(cid: String) -> String:
-	return String(CryptoDB.get_def(cid).get("short", cid))
 
 func _requires_text(u: Dictionary) -> String:
 	var names := PackedStringArray()
@@ -256,7 +253,7 @@ func _refresh() -> void:
 		var row: Dictionary = _rig_rows[id]
 		var def := MiningDB.get_rig(id)
 		row["count"].text = "×%d" % Mining.rig_count(id)
-		row["cost"].text = "%s Данные" % Format.num(Mining.rig_cost(id))
+		row["cost"].text = "%s %s" % [Format.num(Mining.rig_cost(id)), Labels.res_name("data")]
 		var affordable := Mining.can_buy_rig(id)
 		row["button"].disabled = not affordable
 		row["button"].modulate.a = 1.0 if affordable else 0.5

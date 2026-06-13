@@ -10,9 +10,11 @@ var _power_label: Label
 var _power_bar: Panel
 var _power_bar_bg: Panel
 var _power_bar_style: StyleBoxFlat
+var _box: HBoxContainer
 
 const BAR_WIDTH := 80.0
 const BAR_HEIGHT := 6.0
+const NAV_BUTTON_SIZE := 48.0
 
 func _ready() -> void:
 	var margin := MarginContainer.new()
@@ -20,11 +22,12 @@ func _ready() -> void:
 		margin.add_theme_constant_override("margin_%s" % side, 10)
 	add_child(margin)
 
-	var box := HBoxContainer.new()
-	margin.add_child(box)
+	_box = HBoxContainer.new()
+	margin.add_child(_box)
+	var box := _box
 
 	var name_label := Label.new()
-	name_label.text = "ДАННЫЕ:"
+	name_label.text = "%s:" % Labels.res_name("data").to_upper()
 	name_label.add_theme_color_override("font_color", Palette.AMBER)
 	box.add_child(name_label)
 
@@ -40,7 +43,7 @@ func _ready() -> void:
 	box.add_child(_spacer())
 
 	var compute_name := Label.new()
-	compute_name.text = "ВЫЧИСЛЕНИЯ:"
+	compute_name.text = "%s:" % Labels.res_name("compute").to_upper()
 	compute_name.add_theme_color_override("font_color", Palette.COMPUTE)
 	box.add_child(compute_name)
 
@@ -56,7 +59,7 @@ func _ready() -> void:
 	box.add_child(_spacer())
 
 	var energy_name := Label.new()
-	energy_name.text = "ЭНЕРГИЯ:"
+	energy_name.text = "%s:" % Labels.res_name("energy").to_upper()
 	energy_name.add_theme_color_override("font_color", Palette.ENERGY)
 	box.add_child(energy_name)
 
@@ -77,10 +80,24 @@ func _ready() -> void:
 	_power_bar.add_theme_stylebox_override("panel", _power_bar_style)
 	_power_bar_bg.add_child(_power_bar)
 
+	var right_spacer := Control.new()
+	right_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_child(right_spacer)
+
 	Events.resource_changed.connect(_on_resource_changed)
 	Events.tick.connect(_on_tick)
 
 	_refresh_energy()
+
+func add_nav_button(glyph: String, tooltip: String, callback: Callable) -> Button:
+	var btn := Button.new()
+	btn.text = glyph
+	btn.tooltip_text = tooltip
+	btn.custom_minimum_size = Vector2(NAV_BUTTON_SIZE, NAV_BUTTON_SIZE)
+	btn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	btn.pressed.connect(callback)
+	_box.add_child(btn)
+	return btn
 
 func _spacer() -> Label:
 	var sep := Label.new()

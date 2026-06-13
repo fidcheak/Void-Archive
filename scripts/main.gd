@@ -30,61 +30,48 @@ func _ready() -> void:
 	_ops_screen.add_child(layout)
 
 	var topbar := TopBar.new()
+	topbar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	layout.add_child(topbar)
+	topbar.add_nav_button("⌬", "Дерево исследований", _on_tree_button_pressed)
+	topbar.add_nav_button("⟲", "Временная линия", _on_prestige_button_pressed)
 
 	var corruption_bar := CorruptionBar.new()
 	layout.add_child(corruption_bar)
-
-	var banner_holder := CenterContainer.new()
-	banner_holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var anomaly_banner := AnomalyBanner.new()
-	banner_holder.add_child(anomaly_banner)
-	layout.add_child(banner_holder)
 
 	var middle := HBoxContainer.new()
 	middle.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	middle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	layout.add_child(middle)
 
+	var crypto_tracker := CryptoTracker.new()
+	crypto_tracker.mining_pressed.connect(_on_mining_button_pressed)
+	middle.add_child(crypto_tracker)
+
+	var center_col := VBoxContainer.new()
+	center_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	center_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	middle.add_child(center_col)
+
+	var anomaly_banner := AnomalyBanner.new()
+	center_col.add_child(anomaly_banner)
+
 	var center := CenterContainer.new()
 	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	middle.add_child(center)
+	center_col.add_child(center)
 	center.add_child(_build_core())
 
-	var side := VBoxContainer.new()
-	side.custom_minimum_size = Vector2(440, 0)
-	side.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	middle.add_child(side)
-
-	var tree_button := Button.new()
-	tree_button.text = "⌬ ДЕРЕВО ИССЛЕДОВАНИЙ"
-	tree_button.pressed.connect(_on_tree_button_pressed)
-	side.add_child(tree_button)
-
-	var prestige_button := Button.new()
-	prestige_button.text = "⟲ ВРЕМЕННАЯ ЛИНИЯ"
-	prestige_button.pressed.connect(_on_prestige_button_pressed)
-	side.add_child(prestige_button)
-
-	var mining_button := Button.new()
-	mining_button.text = "⛏ КРИПТО-ФЕРМА"
-	mining_button.pressed.connect(_on_mining_button_pressed)
-	side.add_child(mining_button)
-
-	var buildings_panel := BuildingsPanel.new()
-	buildings_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	side.add_child(buildings_panel)
-
 	var ability_bar := AbilityBar.new()
-	layout.add_child(ability_bar)
+	center_col.add_child(ability_bar)
+
+	var build_area := BuildingsPanel.new()
+	build_area.custom_minimum_size = Vector2(460, 0)
+	build_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	middle.add_child(build_area)
 
 	var terminal := TerminalPanel.new()
 	terminal.custom_minimum_size = Vector2(0, TERMINAL_HEIGHT)
 	layout.add_child(terminal)
-
-	var crypto_tracker := CryptoTracker.new()
-	_ops_screen.add_child(crypto_tracker)
 
 	_tree_screen = ResearchTreeScreen.new()
 	_tree_screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
