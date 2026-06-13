@@ -28,6 +28,8 @@ static func can_research(id: String) -> bool:
 	return is_available(id) and can_afford(id)
 
 static func research(id: String) -> bool:
+	if get_def(id).get("stub", false):
+		return false
 	if not can_research(id):
 		return false
 	for res in get_def(id).get("cost", {}):

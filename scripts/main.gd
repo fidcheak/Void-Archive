@@ -5,21 +5,27 @@ const TERMINAL_HEIGHT := 180.0
 
 var _core_rect: ColorRect
 var _crt_material: ShaderMaterial
+var _ops_screen: Control
+var _tree_screen: ResearchTreeScreen
 
 func _ready() -> void:
 	theme = ThemeBuilder.build()
 
 	get_window().min_size = Vector2i(960, 600)
 
+	_ops_screen = Control.new()
+	_ops_screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_ops_screen)
+
 	var bg := ColorRect.new()
 	bg.color = Palette.BG
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(bg)
+	_ops_screen.add_child(bg)
 
 	var layout := VBoxContainer.new()
 	layout.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(layout)
+	_ops_screen.add_child(layout)
 
 	var topbar := TopBar.new()
 	layout.add_child(topbar)
@@ -44,18 +50,23 @@ func _ready() -> void:
 	middle.add_child(center)
 	center.add_child(_build_core())
 
+	var side := VBoxContainer.new()
+	side.custom_minimum_size = Vector2(440, 0)
+	side.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	middle.add_child(side)
+
+	var tree_button := Button.new()
+	tree_button.text = "⌬ ДЕРЕВО ИССЛЕДОВАНИЙ"
+	tree_button.pressed.connect(_on_tree_button_pressed)
+	side.add_child(tree_button)
+
 	var tabs := TabContainer.new()
-	tabs.custom_minimum_size = Vector2(440, 0)
-	tabs.size_flags_vertical = Control.SIZE_FILL
-	middle.add_child(tabs)
+	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	side.add_child(tabs)
 
 	var buildings_panel := BuildingsPanel.new()
 	buildings_panel.name = "Здания"
 	tabs.add_child(buildings_panel)
-
-	var research_panel := ResearchPanel.new()
-	research_panel.name = "Исследования"
-	tabs.add_child(research_panel)
 
 	var prestige_panel := PrestigePanel.new()
 	prestige_panel.name = "Временная линия"
@@ -65,11 +76,25 @@ func _ready() -> void:
 	terminal.custom_minimum_size = Vector2(0, TERMINAL_HEIGHT)
 	layout.add_child(terminal)
 
+	_tree_screen = ResearchTreeScreen.new()
+	_tree_screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_tree_screen.visible = false
+	_tree_screen.back_pressed.connect(_on_tree_back_pressed)
+	add_child(_tree_screen)
+
 	_build_crt_overlay()
 
 	Events.tick.connect(_on_tick)
 
 	SaveManager.load_game()
+
+func _on_tree_button_pressed() -> void:
+	_ops_screen.visible = false
+	_tree_screen.visible = true
+
+func _on_tree_back_pressed() -> void:
+	_tree_screen.visible = false
+	_ops_screen.visible = true
 
 func _on_tick(_delta: float) -> void:
 	_crt_material.set_shader_parameter("corruption", GameState.corruption)
