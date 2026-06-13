@@ -3,31 +3,40 @@ extends PanelContainer
 
 const BAR_WIDTH := 220.0
 
+const BAR_HEIGHT := 10.0
+
 var _label: Label
 var _pct_label: Label
-var _bar_bg: ColorRect
-var _bar_fill: ColorRect
+var _bar_bg: Panel
+var _bar_fill: Panel
+var _bar_fill_style: StyleBoxFlat
 var _purge_button: Button
 
 func _ready() -> void:
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
+	var margin := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_%s" % side, 10)
+	add_child(margin)
+
 	var box := HBoxContainer.new()
-	add_child(box)
+	margin.add_child(box)
 
 	_label = Label.new()
 	_label.text = "ЦЕЛОСТНОСТЬ АРХИВА:"
 	_label.add_theme_color_override("font_color", Palette.AMBER)
 	box.add_child(_label)
 
-	_bar_bg = ColorRect.new()
-	_bar_bg.color = Palette.LINE
-	_bar_bg.custom_minimum_size = Vector2(BAR_WIDTH, 10)
+	_bar_bg = Panel.new()
+	_bar_bg.custom_minimum_size = Vector2(BAR_WIDTH, BAR_HEIGHT)
+	_bar_bg.add_theme_stylebox_override("panel", _bar_style(Palette.LINE, BAR_HEIGHT))
 	box.add_child(_bar_bg)
 
-	_bar_fill = ColorRect.new()
-	_bar_fill.color = Palette.OK
+	_bar_fill = Panel.new()
 	_bar_fill.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
+	_bar_fill_style = _bar_style(Palette.OK, BAR_HEIGHT)
+	_bar_fill.add_theme_stylebox_override("panel", _bar_fill_style)
 	_bar_bg.add_child(_bar_fill)
 
 	_pct_label = Label.new()
@@ -63,10 +72,16 @@ func _refresh() -> void:
 	elif corruption > 0.0:
 		color = Palette.OK.lerp(Palette.WARN, corruption / 0.5)
 
-	_bar_fill.color = color
-	_bar_fill.size = Vector2(BAR_WIDTH * clampf(integrity, 0.0, 1.0), 10)
+	_bar_fill_style.bg_color = color
+	_bar_fill.size = Vector2(BAR_WIDTH * clampf(integrity, 0.0, 1.0), BAR_HEIGHT)
 	_pct_label.text = "%d%%" % int(round(integrity * 100.0))
 	_pct_label.add_theme_color_override("font_color", color)
 
 	_purge_button.text = "Стабилизировать (%s ВЫЧ)" % Format.num(Corruption.purge_cost())
 	_purge_button.disabled = not Corruption.can_purge()
+
+func _bar_style(color: Color, height: float) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = color
+	sb.set_corner_radius_all(int(height / 2.0))
+	return sb

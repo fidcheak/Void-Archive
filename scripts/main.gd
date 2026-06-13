@@ -9,6 +9,8 @@ var _crt_material: ShaderMaterial
 func _ready() -> void:
 	theme = ThemeBuilder.build()
 
+	get_window().min_size = Vector2i(960, 600)
+
 	var bg := ColorRect.new()
 	bg.color = Palette.BG
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -43,7 +45,7 @@ func _ready() -> void:
 	center.add_child(_build_core())
 
 	var tabs := TabContainer.new()
-	tabs.custom_minimum_size = Vector2(340, 0)
+	tabs.custom_minimum_size = Vector2(440, 0)
 	tabs.size_flags_vertical = Control.SIZE_FILL
 	middle.add_child(tabs)
 

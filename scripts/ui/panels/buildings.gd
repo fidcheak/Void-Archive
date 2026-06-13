@@ -10,11 +10,20 @@ func _ready() -> void:
 
 	var scroll := ScrollContainer.new()
 	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	add_child(scroll)
+
+	var margin := MarginContainer.new()
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_%s" % side, 14)
+	scroll.add_child(margin)
 
 	var list := VBoxContainer.new()
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(list)
+	list.add_theme_constant_override("separation", 10)
+	margin.add_child(list)
 
 	for b in BuildingsDB.get_list():
 		list.add_child(_build_row(b))
@@ -39,6 +48,7 @@ func _build_row(b: Dictionary) -> Control:
 	name_label.text = b["name"]
 	name_label.add_theme_color_override("font_color", Palette.AMBER)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	header.add_child(name_label)
 
 	var owned_label := Label.new()
@@ -48,6 +58,7 @@ func _build_row(b: Dictionary) -> Control:
 	var effect_label := Label.new()
 	effect_label.text = _effect_text(b)
 	effect_label.add_theme_color_override("font_color", Palette.TEXT_2)
+	effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	row.add_child(effect_label)
 
 	var footer := HBoxContainer.new()
@@ -56,6 +67,7 @@ func _build_row(b: Dictionary) -> Control:
 
 	var cost_label := Label.new()
 	cost_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cost_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	footer.add_child(cost_label)
 
 	var buy_button := Button.new()

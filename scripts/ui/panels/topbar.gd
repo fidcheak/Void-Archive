@@ -7,14 +7,21 @@ var _compute_label: Label
 var _compute_rate_label: Label
 var _energy_label: Label
 var _power_label: Label
-var _power_bar: ColorRect
-var _power_bar_bg: ColorRect
+var _power_bar: Panel
+var _power_bar_bg: Panel
+var _power_bar_style: StyleBoxFlat
 
 const BAR_WIDTH := 80.0
+const BAR_HEIGHT := 6.0
 
 func _ready() -> void:
+	var margin := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_%s" % side, 10)
+	add_child(margin)
+
 	var box := HBoxContainer.new()
-	add_child(box)
+	margin.add_child(box)
 
 	var name_label := Label.new()
 	name_label.text = "ДАННЫЕ:"
@@ -59,14 +66,15 @@ func _ready() -> void:
 	_power_label = Label.new()
 	box.add_child(_power_label)
 
-	_power_bar_bg = ColorRect.new()
-	_power_bar_bg.color = Palette.LINE
-	_power_bar_bg.custom_minimum_size = Vector2(BAR_WIDTH, 4)
+	_power_bar_bg = Panel.new()
+	_power_bar_bg.custom_minimum_size = Vector2(BAR_WIDTH, BAR_HEIGHT)
+	_power_bar_bg.add_theme_stylebox_override("panel", _bar_style(Palette.LINE, BAR_HEIGHT))
 	box.add_child(_power_bar_bg)
 
-	_power_bar = ColorRect.new()
-	_power_bar.color = Palette.OK
+	_power_bar = Panel.new()
 	_power_bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
+	_power_bar_style = _bar_style(Palette.OK, BAR_HEIGHT)
+	_power_bar.add_theme_stylebox_override("panel", _power_bar_style)
 	_power_bar_bg.add_child(_power_bar)
 
 	Events.resource_changed.connect(_on_resource_changed)
@@ -105,5 +113,11 @@ func _refresh_energy() -> void:
 	elif ratio < 1.0:
 		color = Palette.WARN
 	_power_label.add_theme_color_override("font_color", color)
-	_power_bar.color = color
-	_power_bar.size = Vector2(BAR_WIDTH * clampf(ratio, 0.0, 1.0), 4)
+	_power_bar_style.bg_color = color
+	_power_bar.size = Vector2(BAR_WIDTH * clampf(ratio, 0.0, 1.0), BAR_HEIGHT)
+
+func _bar_style(color: Color, height: float) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = color
+	sb.set_corner_radius_all(int(height / 2.0))
+	return sb

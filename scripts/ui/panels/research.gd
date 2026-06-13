@@ -9,17 +9,27 @@ func _ready() -> void:
 
 	var scroll := ScrollContainer.new()
 	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	add_child(scroll)
+
+	var margin := MarginContainer.new()
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_%s" % side, 14)
+	scroll.add_child(margin)
 
 	var list := VBoxContainer.new()
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(list)
+	list.add_theme_constant_override("separation", 10)
+	margin.add_child(list)
 
 	for branch in ResearchDB.get_branches():
 		var header := Label.new()
-		header.text = branch["name"]
+		header.text = branch["name"].to_upper()
 		header.add_theme_color_override("font_color", Palette.AMBER)
 		list.add_child(header)
+		list.add_child(_thin_separator())
 
 		var nodes := []
 		for r in ResearchDB.get_list():
@@ -33,8 +43,10 @@ func _ready() -> void:
 				stub.add_theme_color_override("font_color", Palette.TEXT_3)
 				list.add_child(stub)
 		else:
-			for r in nodes:
-				list.add_child(_build_row(r))
+			for i in range(nodes.size()):
+				list.add_child(_build_row(nodes[i]))
+				if i < nodes.size() - 1:
+					list.add_child(_thin_separator())
 
 		list.add_child(HSeparator.new())
 
@@ -43,6 +55,9 @@ func _ready() -> void:
 	Events.resource_changed.connect(_on_resource_changed)
 
 	_refresh()
+
+func _thin_separator() -> HSeparator:
+	return HSeparator.new()
 
 func _build_row(r: Dictionary) -> Control:
 	var row := VBoxContainer.new()
@@ -55,6 +70,7 @@ func _build_row(r: Dictionary) -> Control:
 	var name_label := Label.new()
 	name_label.text = r["name"]
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	header.add_child(name_label)
 
 	var status_label := Label.new()
@@ -63,6 +79,7 @@ func _build_row(r: Dictionary) -> Control:
 	var desc_label := Label.new()
 	desc_label.text = r["desc"]
 	desc_label.add_theme_color_override("font_color", Palette.TEXT_2)
+	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	row.add_child(desc_label)
 
 	var footer := HBoxContainer.new()
@@ -73,6 +90,7 @@ func _build_row(r: Dictionary) -> Control:
 	cost_label.text = _cost_text(r)
 	cost_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cost_label.add_theme_color_override("font_color", Palette.COMPUTE)
+	cost_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	footer.add_child(cost_label)
 
 	var button := Button.new()
