@@ -2,6 +2,8 @@ extends Node
 
 var resources := { "data": 0.0, "compute": 0.0 }
 var buildings := {}                   # id -> count (пусто)
+var crypto_rigs := {}          # rig_id -> count — СОХРАНЯЕТСЯ
+var mining_upgrades := {}      # id -> true — СОХРАНЯЕТСЯ
 var meta := { "version": 0, "last_saved": 0.0, "total_clicks": 0 }
 var research := {}            # id -> true (изученные узлы) — СОХРАНЯЕТСЯ
 var corruption := 0.0         # 0..1, нестабильность — СОХРАНЯЕТСЯ
@@ -26,6 +28,10 @@ var energy_demand := 0.0
 var power_ratio := 1.0
 var production_rates := {}    # resource -> rate (производное, НЕ сохраняется)
 
+func _init() -> void:
+	for cid in CryptoDB.ids():
+		resources[cid] = 0.0
+
 func get_resource(id: String) -> float:
 	return float(resources.get(id, 0.0))
 
@@ -35,7 +41,11 @@ func add_resource(id: String, amount: float) -> void:
 
 func reset_to_default() -> void:
 	resources = { "data": 0.0, "compute": 0.0 }
+	for cid in CryptoDB.ids():
+		resources[cid] = 0.0
 	buildings = {}
+	crypto_rigs = {}
+	mining_upgrades = {}
 	meta = { "version": 0, "last_saved": 0.0, "total_clicks": 0 }
 	research = {}
 	corruption = 0.0

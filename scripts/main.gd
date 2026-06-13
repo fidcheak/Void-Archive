@@ -8,6 +8,7 @@ var _crt_material: ShaderMaterial
 var _ops_screen: Control
 var _tree_screen: ResearchTreeScreen
 var _prestige_screen: PrestigeScreen
+var _mining_screen: MiningScreen
 
 func _ready() -> void:
 	theme = ThemeBuilder.build()
@@ -66,6 +67,11 @@ func _ready() -> void:
 	prestige_button.pressed.connect(_on_prestige_button_pressed)
 	side.add_child(prestige_button)
 
+	var mining_button := Button.new()
+	mining_button.text = "⛏ КРИПТО-ФЕРМА"
+	mining_button.pressed.connect(_on_mining_button_pressed)
+	side.add_child(mining_button)
+
 	var buildings_panel := BuildingsPanel.new()
 	buildings_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	side.add_child(buildings_panel)
@@ -73,6 +79,9 @@ func _ready() -> void:
 	var terminal := TerminalPanel.new()
 	terminal.custom_minimum_size = Vector2(0, TERMINAL_HEIGHT)
 	layout.add_child(terminal)
+
+	var crypto_tracker := CryptoTracker.new()
+	_ops_screen.add_child(crypto_tracker)
 
 	_tree_screen = ResearchTreeScreen.new()
 	_tree_screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -85,6 +94,12 @@ func _ready() -> void:
 	_prestige_screen.visible = false
 	_prestige_screen.back_pressed.connect(_on_prestige_back_pressed)
 	add_child(_prestige_screen)
+
+	_mining_screen = MiningScreen.new()
+	_mining_screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_mining_screen.visible = false
+	_mining_screen.back_pressed.connect(_on_mining_back_pressed)
+	add_child(_mining_screen)
 
 	_build_crt_overlay()
 
@@ -106,6 +121,14 @@ func _on_prestige_button_pressed() -> void:
 
 func _on_prestige_back_pressed() -> void:
 	_prestige_screen.visible = false
+	_ops_screen.visible = true
+
+func _on_mining_button_pressed() -> void:
+	_ops_screen.visible = false
+	_mining_screen.visible = true
+
+func _on_mining_back_pressed() -> void:
+	_mining_screen.visible = false
 	_ops_screen.visible = true
 
 func _on_tick(_delta: float) -> void:

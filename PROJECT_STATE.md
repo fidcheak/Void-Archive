@@ -1,5 +1,5 @@
 # PROJECT STATE — Архив Пустоты
-Последний слой: L5(контент)
+Последний слой: L6
 Движок: Godot 4.x. Запуск: F5.
 
 ## Что уже работает
@@ -21,7 +21,9 @@
 - Дерево исследований (ResearchTreeScreen) переведено на TreeGraph: адаптер `_nodes()` собирает узлы ResearchDB (цвет ветки, состояние owned/available/locked, тексты эффекта/стоимости/требований, `action_label = "Изучить"`), `_do_action(id)` вызывает `Research.research(id)`. Шапка: «← НАЗАД», заголовок «ДЕРЕВО ИССЛЕДОВАНИЙ», счётчик Вычислений.
 - Флаговый гейт контента: `Research.is_available(id)` проверяет `requires_flag` (если узел требует флаг, который не выставлен в `GameState.flags`, узел недоступен независимо от предпосылок) — единая точка истины для `research()` и адаптера UI. Для узла `v_root` (флаг `void_detected`, ставится в Corruption.update при corruption ≥ 0.5) окно деталей показывает подсказку «Требуется обнаружить повреждённый сектор (целостность < 50%)» вместо списка предпосылок. Это первый случай связки «повреждённый сектор → разблокировка контента»; шаблон пригоден для будущих сюжетных гейтов.
 - Престиж как граф-экран (PrestigeScreen, `scripts/ui/screens/prestige_screen.gd`): тот же TreeGraph поверх MetaDB.get_list() (узлы окрашены в Palette.VOID), состояние OWNED/AVAILABLE/LOCKED по `Prestige.is_owned`/`Prestige.prereqs_met`, `cost_text = "N ЭХО"`, `effect_text` по типу эффекта (autoclick/mult_production/start_data/echo_gain_mult), `action_label = "Активировать"`, `_do_action(id)` вызывает `Prestige.buy(id)`. Шапка: «← НАЗАД», заголовок «ВРЕМЕННАЯ ЛИНИЯ», баланс ХРОНО-ЭХО, «Получишь: +M» (`Prestige.echo_gain()`), кнопка «Свернуть временную линию (+M эхо)» с двухшаговым подтверждением (3с таймаут, как в старой PrestigePanel) — вызывает `Prestige.do_prestige()`.
-- Навигация экранов: главный экран (`_ops_screen`), «Дерево исследований» (`_tree_screen`, ResearchTreeScreen) и «Временная линия» (`_prestige_screen`, PrestigeScreen) переключаются через `visible` в main.gd. Из правой колонки главного экрана — кнопки «⌬ ДЕРЕВО ИССЛЕДОВАНИЙ» и «⟲ ВРЕМЕННАЯ ЛИНИЯ»; «← НАЗАД» в шапке каждого графа возвращает на главный экран. Вкладок (TabContainer) больше нет. CRT-оверлей и подача corruption — глобальные, поверх всех экранов.
+- Навигация экранов: главный экран (`_ops_screen`), «Дерево исследований» (`_tree_screen`, ResearchTreeScreen), «Временная линия» (`_prestige_screen`, PrestigeScreen) и «Крипто-ферма» (`_mining_screen`, MiningScreen) переключаются через `visible` в main.gd. Из правой колонки главного экрана — кнопки «⌬ ДЕРЕВО ИССЛЕДОВАНИЙ», «⟲ ВРЕМЕННАЯ ЛИНИЯ» и «⛏ КРИПТО-ФЕРМА»; «← НАЗАД» в шапке каждого экрана возвращает на главный экран. Вкладок (TabContainer) больше нет. CRT-оверлей и подача corruption — глобальные, поверх всех экранов.
+- Крипто-экономика (L6, «игра в игре»): крипто-ресурсы хранятся в `GameState.resources` по списку `CryptoDB` (каркас на 6 видов, сидировано 2 — Хеш-осколок `hsh` и Энтропий `ent`). Риги-майнеры (`MiningDB.get_rigs()`) покупаются за Данные (геометрический рост цены через `Mining.rig_cost`) и медленно добывают свою крипту (`Mining.crypto_rate`, `Mining.update` тикает в game_loop.gd). Апгрейды разгона (`MiningDB.get_upgrades()`) покупаются ЗА КРИПТУ, имеют предпосылки и множат всю добычу (`Mining.mine_mult`). Ферма самодостаточна — не использует основную энергосеть, не тратит крипту на структуры (придёт в L7+).
+- UI крипто-экономики: экран «КРИПТО-ФЕРМА» (MiningScreen) — списком (не граф): балансы крипты, риги (имя/×N/цена в Данных/кнопка «Собрать»), разгон (апгрейды владение/доступность/требования, кнопка «Активировать»). Левый сворачивающийся трекер (CryptoTracker) на главном экране: свёрнут по умолчанию (кнопка «КРИПТА ▸»), при разворачивании показывает баланс и /сек по каждой крипте; не уводит с главного экрана.
 
 ## Автозагрузки (порядок)
 - GameState, Events, GameLoop, SaveManager
@@ -30,15 +32,18 @@
 - data: Данные — базовая валюта, начисляется кликом по ядру и автоматизацией (Сканер), множится исследованиями.
 - energy: Энергия — поток (не накапливается), производные поля в GameState (energy_production/energy_demand/power_ratio).
 - compute: Вычисления — накапливаемый ресурс, производится Суперкомпьютером, тратится на исследования.
+- hsh/ent (CryptoDB, каркас на 6, сидировано 2): Хеш-осколок и Энтропий — крипто-ресурсы, хранятся в `resources`, медленно добываются ригами (Mining), не тратятся (трата — L7+).
 
 ## Файлы и их роль
 - scenes/main.tscn: единственная сцена — корневой Control + main.gd
-- scripts/main.gd: собирает UI-дерево в коде — `_ops_screen` (топбар / CorruptionBar / AnomalyBanner / ядро + кнопка «Дерево исследований» + TabContainer(Здания/Временная линия) / терминал) и `_tree_screen` (ResearchTreeScreen), переключение через visible; CRT-оверлей (пост-процесс, кормит corruption каждый тик, поверх обоих экранов), обработка клика по ядру, дебаг-сброс
-- scripts/core/game_state.gd: autoload GameState — resources (data/compute)/buildings/meta/research/corruption/flags + мета (chrono_echo/meta_upgrades/prestige_count) + трекинг забега (run_best_data/run_peak_corruption) + транзиентные active_anomaly/anomaly_cooldown + производные поля энергосети и production_rates
-- scripts/core/events.gd: autoload Events — шина сигналов (+ building_purchased, research_completed, anomaly_started, anomaly_ended, prestige_done, meta_upgrade_bought)
-- scripts/core/game_loop.gd: autoload GameLoop — тик (Anomalies → Production → Corruption → трекинг run_best_data/run_peak_corruption), автосейв
-- scripts/core/save_manager.gd: autoload SaveManager — JSON-сейв (+ research, corruption, flags, chrono_echo, meta_upgrades, prestige_count, run_best_data, run_peak_corruption), оффлайн-прогресс по всем production_rates, wipe
+- scripts/main.gd: собирает UI-дерево в коде — `_ops_screen` (топбар / CorruptionBar / AnomalyBanner / ядро + кнопки «Дерево исследований»/«Временная линия»/«Крипто-ферма» + BuildingsPanel / терминал / CryptoTracker слева), `_tree_screen` (ResearchTreeScreen), `_prestige_screen` (PrestigeScreen), `_mining_screen` (MiningScreen) — переключение через visible; CRT-оверлей (пост-процесс, кормит corruption каждый тик, поверх всех экранов), обработка клика по ядру, дебаг-сброс
+- scripts/core/game_state.gd: autoload GameState — resources (data/compute/hsh/ent)/buildings/meta/research/corruption/flags + мета (chrono_echo/meta_upgrades/prestige_count) + трекинг забега (run_best_data/run_peak_corruption) + крипто-ферма (crypto_rigs/mining_upgrades) + транзиентные active_anomaly/anomaly_cooldown + производные поля энергосети и production_rates; `_init()` сидирует нулевые балансы для всех CryptoDB.ids()
+- scripts/core/events.gd: autoload Events — шина сигналов (+ building_purchased, research_completed, anomaly_started, anomaly_ended, prestige_done, meta_upgrade_bought, crypto_rig_bought, mining_upgrade_bought)
+- scripts/core/game_loop.gd: autoload GameLoop — тик (Anomalies → Production → Mining → Corruption → трекинг run_best_data/run_peak_corruption), автосейв
+- scripts/core/save_manager.gd: autoload SaveManager — JSON-сейв (+ research, corruption, flags, chrono_echo, meta_upgrades, prestige_count, run_best_data, run_peak_corruption, crypto_rigs, mining_upgrades), оффлайн-прогресс по всем production_rates и crypto-rates (Mining.compute_crypto_rates), wipe
 - scripts/data/resources_db.gd: ResourcesDB — определения "data", "energy", "compute"
+- scripts/data/crypto_db.gd: CryptoDB — список крипто-ресурсов (каркас на 6, сидировано 2: hsh, ent), get_def/ids
+- scripts/data/mining_db.gd: MiningDB — риги-майнеры (cost_base/cost_mult/cost_res/mines) и апгрейды разгона (requires/cost в крипте/mine_mult)
 - scripts/data/buildings_db.gd: BuildingsDB — определения "scanner", "reactor", "supercomputer"
 - scripts/data/research_db.gd: ResearchDB — ветки (id/name/color/locked) + список узлов с `pos`: Путь Машин (4 узла), Путь Сознания (5 узлов, открыта с начала), Путь Пустоты (4 узла, корень `v_root` с `requires_flag: "void_detected"`)
 - scripts/data/anomalies_db.gd: AnomaliesDB — список определений аномалий (signal/glitch, эффекты, веса)
@@ -49,6 +54,7 @@
 - scripts/systems/corruption.gd: Corruption — update() (рост от интенсивности производства, флаг void_detected), get_production_bonus_mult, purge_cost/can_purge/purge
 - scripts/systems/anomalies.gd: Anomalies — update() (таймер активной аномалии / кулдаун спавна), get_active_production_mult, взвешенный коррупцией выбор аномалии
 - scripts/systems/prestige.gd: Prestige — echo_gain/can_prestige/do_prestige (сброс забега + head start), is_owned/prereqs_met/can_buy/buy перков, get_production_mult/get_echo_gain_mult/autoclick_rate
+- scripts/systems/mining.gd: Mining — риги (rig_count/rig_cost/can_buy_rig/buy_rig), mine_mult (от апгрейдов разгона), crypto_rate/compute_crypto_rates/update (медленное накопление крипты каждый тик), апгрейды разгона (upg_owned/upg_can_buy/upg_buy, тратят крипту)
 - scripts/ui/format.gd: Format — форматирование чисел
 - scripts/ui/palette.gd: Palette — цветовые токены (+ ENERGY, COMPUTE, CORRUPT, SIGNAL, VOID)
 - scripts/ui/theme_builder.gd: ThemeBuilder — Theme в коде
@@ -62,6 +68,8 @@
 - scripts/ui/screens/tree_graph.gd: TreeGraph — переиспользуемый компонент графа (узлы/рёбра/пан/окно деталей/действие через адаптеры node_provider и action_handler)
 - scripts/ui/screens/research_tree.gd: ResearchTreeScreen — полноэкранный граф дерева исследований на TreeGraph (адаптеры _nodes/_do_action), шапка с кнопкой «← НАЗАД» и счётчиком Вычислений
 - scripts/ui/screens/prestige_screen.gd: PrestigeScreen — полноэкранный граф мета-дерева на TreeGraph, шапка с балансом эхо, «получишь сейчас» и двухшаговым сворачиванием временной линии
+- scripts/ui/screens/mining_screen.gd: MiningScreen — полноэкранный список-экран «КРИПТО-ФЕРМА»: балансы крипты (баланс+/сек), риги (имя/×N/описание/цена в Данных/кнопка «Собрать»), разгон (апгрейды владение/доступность/требования/кнопка «Активировать»); шапка «← НАЗАД»
+- scripts/ui/panels/crypto_tracker.gd: CryptoTracker — сворачивающийся трекер у левого края главного экрана (по умолчанию свёрнут, кнопка «КРИПТА ▸/◂»), в развёрнутом виде показывает баланс и /сек по каждой крипте из CryptoDB
 - shaders/crt.gdshader: CRT-постпроцесс (screen_texture: дрожание/аберрация/скан-линии/выпадения от corruption, виньетка, фликер)
 - shaders/core.gdshader: анимированное «ядро»
 
@@ -72,6 +80,7 @@
 - GameState.resources — следующие слои добавят новые накапливаемые ресурсы по аналогии с "data"/"compute".
 - AnomaliesDB.get_list() — новые типы аномалий, в т.ч. интерактивные «поймай сигнал» (L6).
 - MetaDB.get_list() — новые мета-перки, разблокировки веток/ресурсов и сквозное Осознание архива (L5/L8), сид-модификаторы таймлайнов (L9).
+- CryptoDB.get_list() / MiningDB — ещё 4 крипто-вида и соответствующие риги/апгрейды разгона (контент); трата крипты на продвинутые структуры всех веток (→ L7).
 
 ## Известные дыры/TODO
 - Нет.

@@ -17,6 +17,8 @@ func save_game() -> void:
 		"prestige_count": GameState.prestige_count,
 		"run_best_data": GameState.run_best_data,
 		"run_peak_corruption": GameState.run_peak_corruption,
+		"crypto_rigs": GameState.crypto_rigs,
+		"mining_upgrades": GameState.mining_upgrades,
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
@@ -45,6 +47,8 @@ func load_game() -> void:
 	if data.has("prestige_count"): GameState.prestige_count = int(data["prestige_count"])
 	if data.has("run_best_data"): GameState.run_best_data = float(data["run_best_data"])
 	if data.has("run_peak_corruption"): GameState.run_peak_corruption = float(data["run_peak_corruption"])
+	if data.has("crypto_rigs"): GameState.crypto_rigs = data["crypto_rigs"]
+	if data.has("mining_upgrades"): GameState.mining_upgrades = data["mining_upgrades"]
 	_apply_offline()
 	Events.game_loaded.emit()
 	Events.resource_changed.emit("data", GameState.get_resource("data"))
@@ -61,6 +65,10 @@ func _apply_offline() -> void:
 		var rate: float = rates[res]
 		if rate != 0.0:
 			GameState.add_resource(res, rate * elapsed)
+	var crates := Mining.compute_crypto_rates()
+	for cid in crates:
+		if crates[cid] != 0.0:
+			GameState.add_resource(cid, crates[cid] * elapsed)
 
 func wipe() -> void:
 	var dir := DirAccess.open("user://")

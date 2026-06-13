@@ -19,3 +19,4 @@ const ENERGY := Color("4fd6e0")       # холодный циан — визуа
 const COMPUTE := Color("8aa0ff")      # мягкий индиго — отделяет от янтаря/циана
 const CORRUPT := Color("c0432f")      # красный распада
 const SIGNAL := Color("5fe0a8")       # зелёный «хорошей» аномалии
+const CRYPTO := Color("c9a94f")       # тускло-золотой акцент крипто-секции
