@@ -1,6 +1,6 @@
 class_name Corruption
 
-const ACCRUAL_K := 0.0002      # рост на единицу суммарной скорости в сек (тюнится)
+const ACCRUAL_K := 0.00003     # медленный рост — коррупция это поздняя угроза (дальше тюнится)
 const BONUS := 0.5             # до +50% производства при коррупции = 1.0
 const PURGE_AMOUNT := 0.25      # сколько снимает одна стабилизация
 const THRESHOLD_VOID := 0.5
@@ -9,7 +9,9 @@ static func update(delta: float) -> void:
 	var intensity := 0.0
 	for res in GameState.production_rates:
 		intensity += float(GameState.production_rates[res])
-	GameState.corruption = clampf(GameState.corruption + ACCRUAL_K * intensity * delta, 0.0, 1.0)
+	# log гасит вклад большого производства; (1 - corruption) даёт асимптоту к 1.0
+	var gain := ACCRUAL_K * log(1.0 + maxf(0.0, intensity)) * (1.0 - GameState.corruption)
+	GameState.corruption = clampf(GameState.corruption + gain * delta, 0.0, 1.0)
 	if GameState.corruption >= THRESHOLD_VOID and not GameState.flags.get("void_detected", false):
 		GameState.flags["void_detected"] = true
 		Events.log_message.emit("> [СЕКТОР ??] ОБНАРУЖЕНА НЕИЗВЕСТНАЯ СУЩНОСТЬ", "alert")
