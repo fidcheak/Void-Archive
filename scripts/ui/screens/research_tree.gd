@@ -67,7 +67,7 @@ func _nodes() -> Array:
 		var state := TreeGraph.NodeState.LOCKED
 		if Research.is_owned(r["id"]):
 			state = TreeGraph.NodeState.OWNED
-		elif not r.get("stub", false) and Research.is_available(r["id"]):
+		elif Research.is_available(r["id"]):
 			state = TreeGraph.NodeState.AVAILABLE
 
 		result.append({
@@ -109,6 +109,10 @@ func _effect_text(r: Dictionary) -> String:
 	return ", ".join(parts)
 
 func _req_text(r: Dictionary) -> String:
+	var flag := String(r.get("requires_flag", ""))
+	if flag != "" and not GameState.flags.get(flag, false):
+		return "Требуется обнаружить повреждённый сектор (целостность < 50%)"
+
 	var names := PackedStringArray()
 	for p in r.get("requires", []):
 		names.append(String(Research.get_def(p).get("name", p)))

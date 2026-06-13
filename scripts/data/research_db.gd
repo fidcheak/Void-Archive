@@ -4,7 +4,7 @@ class_name ResearchDB
 static func get_branches() -> Array:
 	return [
 		{ "id": "machines",  "name": "Путь Машин",    "color": Palette.AMBER,  "locked": false },
-		{ "id": "cognition", "name": "Путь Сознания", "color": Palette.ENERGY, "locked": true },
+		{ "id": "cognition", "name": "Путь Сознания", "color": Palette.ENERGY, "locked": false },
 		{ "id": "void",      "name": "Путь Пустоты",  "color": Palette.VOID,   "locked": true },
 	]
 
@@ -39,15 +39,66 @@ static func get_list() -> Array:
 			"pos": Vector2(-130, -300),
 		},
 		{
-			"id": "c_root", "name": "Путь Сознания", "branch": "cognition", "stub": true,
-			"desc": "[ДАННЫЕ ПОВРЕЖДЕНЫ]",
-			"requires": [], "cost": {}, "effects": {},
+			"id": "c_root", "name": "Когнитивное ядро", "branch": "cognition",
+			"desc": "Архив начинает осмыслять собственные данные.",
+			"requires": [], "cost": { "compute": 30.0 },
+			"effects": { "mult_production": { "compute": 1.5 } },
 			"pos": Vector2(-360, 0),
 		},
 		{
-			"id": "v_root", "name": "Путь Пустоты", "branch": "void", "stub": true,
-			"desc": "[ДАННЫЕ ПОВРЕЖДЕНЫ]",
-			"requires": [], "cost": {}, "effects": {},
+			"id": "c_parallel", "name": "Параллельные потоки", "branch": "cognition",
+			"desc": "Суперкомпьютеры работают согласованнее.",
+			"requires": ["c_root"], "cost": { "compute": 90.0 },
+			"effects": { "mult_building": { "supercomputer": 1.5 } },
+			"pos": Vector2(-360, -150),
+		},
+		{
+			"id": "c_deep", "name": "Глубокое обучение", "branch": "cognition",
+			"desc": "Самооптимизация вычислений.",
+			"requires": ["c_root"], "cost": { "compute": 140.0 },
+			"effects": { "mult_production": { "compute": 2.0 } },
+			"pos": Vector2(-520, -150),
+		},
+		{
+			"id": "c_insight", "name": "Прозрение", "branch": "cognition",
+			"desc": "Понимание данных ускоряет добычу.",
+			"requires": ["c_parallel"], "cost": { "compute": 220.0 },
+			"effects": { "mult_production": { "data": 1.4 } },
+			"pos": Vector2(-360, -300),
+		},
+		{
+			"id": "c_oversight", "name": "Надзор", "branch": "cognition",
+			"desc": "Полный контроль вычислительного контура.",
+			"requires": ["c_deep"], "cost": { "compute": 300.0 },
+			"effects": { "mult_building": { "supercomputer": 2.0 } },
+			"pos": Vector2(-520, -300),
+		},
+		{
+			"id": "v_root", "name": "Разлом", "branch": "void",
+			"desc": "Трещина в архиве ведёт глубже, чем следовало бы.",
+			"requires": [], "requires_flag": "void_detected", "cost": { "compute": 150.0 },
+			"effects": { "mult_production": { "data": 2.0 } },
 			"pos": Vector2(360, 0),
+		},
+		{
+			"id": "v_whisper", "name": "Шёпот глубин", "branch": "void",
+			"desc": "Что-то отвечает на запросы.",
+			"requires": ["v_root"], "cost": { "compute": 300.0 },
+			"effects": { "mult_production": { "data": 2.0 } },
+			"pos": Vector2(360, -150),
+		},
+		{
+			"id": "v_hunger", "name": "Голод Пустоты", "branch": "void",
+			"desc": "Сканеры тянутся к тому, чего не должно быть.",
+			"requires": ["v_root"], "cost": { "compute": 420.0 },
+			"effects": { "mult_building": { "scanner": 2.5 } },
+			"pos": Vector2(520, -150),
+		},
+		{
+			"id": "v_communion", "name": "Слияние", "branch": "void",
+			"desc": "Граница между тобой и архивом истончается.",
+			"requires": ["v_whisper"], "cost": { "compute": 800.0 },
+			"effects": { "mult_production": { "compute": 2.0 } },
+			"pos": Vector2(360, -300),
 		},
 	]

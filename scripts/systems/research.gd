@@ -16,7 +16,13 @@ static func prereqs_met(id: String) -> bool:
 	return true
 
 static func is_available(id: String) -> bool:
-	return not is_owned(id) and prereqs_met(id)
+	var d := get_def(id)
+	if d.get("stub", false):
+		return false
+	var flag := String(d.get("requires_flag", ""))
+	if flag != "" and not GameState.flags.get(flag, false):
+		return false
+	return (not is_owned(id)) and prereqs_met(id)
 
 static func can_afford(id: String) -> bool:
 	for res in get_def(id).get("cost", {}):
