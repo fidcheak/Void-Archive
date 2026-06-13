@@ -12,6 +12,11 @@ func save_game() -> void:
 		"research": GameState.research,
 		"corruption": GameState.corruption,
 		"flags": GameState.flags,
+		"chrono_echo": GameState.chrono_echo,
+		"meta_upgrades": GameState.meta_upgrades,
+		"prestige_count": GameState.prestige_count,
+		"run_best_data": GameState.run_best_data,
+		"run_peak_corruption": GameState.run_peak_corruption,
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
@@ -35,6 +40,11 @@ func load_game() -> void:
 	if data.has("research"): GameState.research = data["research"]
 	if data.has("corruption"): GameState.corruption = float(data["corruption"])
 	if data.has("flags"): GameState.flags = data["flags"]
+	if data.has("chrono_echo"): GameState.chrono_echo = float(data["chrono_echo"])
+	if data.has("meta_upgrades"): GameState.meta_upgrades = data["meta_upgrades"]
+	if data.has("prestige_count"): GameState.prestige_count = int(data["prestige_count"])
+	if data.has("run_best_data"): GameState.run_best_data = float(data["run_best_data"])
+	if data.has("run_peak_corruption"): GameState.run_peak_corruption = float(data["run_peak_corruption"])
 	_apply_offline()
 	Events.game_loaded.emit()
 	Events.resource_changed.emit("data", GameState.get_resource("data"))

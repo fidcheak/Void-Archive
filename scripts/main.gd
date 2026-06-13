@@ -55,6 +55,10 @@ func _ready() -> void:
 	research_panel.name = "Исследования"
 	tabs.add_child(research_panel)
 
+	var prestige_panel := PrestigePanel.new()
+	prestige_panel.name = "Временная линия"
+	tabs.add_child(prestige_panel)
+
 	var terminal := TerminalPanel.new()
 	terminal.custom_minimum_size = Vector2(0, TERMINAL_HEIGHT)
 	layout.add_child(terminal)

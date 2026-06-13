@@ -29,7 +29,9 @@ static func recompute() -> Dictionary:
 			var amt: float = float(b["produces"][res]) * n * mult * Research.get_production_mult(res)
 			rates[res] = float(rates.get(res, 0.0)) + amt
 
-	var global_mult := Corruption.get_production_bonus_mult() * Anomalies.get_active_production_mult()
+	rates["data"] = float(rates.get("data", 0.0)) + Prestige.autoclick_rate()
+
+	var global_mult := Corruption.get_production_bonus_mult() * Anomalies.get_active_production_mult() * Prestige.get_production_mult()
 	for res in rates.keys():
 		rates[res] = float(rates[res]) * global_mult
 
