@@ -1,0 +1,109 @@
+class_name BuildingsPanel
+extends PanelContainer
+
+var _rows := {}  # id -> { "owned": Label, "cost": Label, "button": Button }
+var _power_warned := false
+
+func _ready() -> void:
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	var scroll := ScrollContainer.new()
+	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(scroll)
+
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(list)
+
+	for b in BuildingsDB.get_list():
+		list.add_child(_build_row(b))
+
+	Events.tick.connect(_on_tick)
+	Events.building_purchased.connect(_on_building_purchased)
+
+	_refresh()
+
+func _build_row(b: Dictionary) -> Control:
+	var row := VBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var sep := HSeparator.new()
+	row.add_child(sep)
+
+	var header := HBoxContainer.new()
+	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(header)
+
+	var name_label := Label.new()
+	name_label.text = b["name"]
+	name_label.add_theme_color_override("font_color", Palette.AMBER)
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(name_label)
+
+	var owned_label := Label.new()
+	owned_label.text = "×%d" % Buildings.count(b["id"])
+	header.add_child(owned_label)
+
+	var effect_label := Label.new()
+	effect_label.text = _effect_text(b)
+	effect_label.add_theme_color_override("font_color", Palette.TEXT_2)
+	row.add_child(effect_label)
+
+	var footer := HBoxContainer.new()
+	footer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(footer)
+
+	var cost_label := Label.new()
+	cost_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	footer.add_child(cost_label)
+
+	var buy_button := Button.new()
+	buy_button.text = "Установить"
+	buy_button.pressed.connect(_on_buy_pressed.bind(b["id"]))
+	footer.add_child(buy_button)
+
+	_rows[b["id"]] = { "owned": owned_label, "cost": cost_label, "button": buy_button }
+	return row
+
+func _effect_text(b: Dictionary) -> String:
+	var parts := PackedStringArray()
+	for res_id in b.get("produces", {}).keys():
+		parts.append("+%s %s/сек" % [Format.num(b["produces"][res_id]), _res_name(res_id)])
+	for res_id in b.get("consumes", {}).keys():
+		parts.append("-%s %s/сек" % [Format.num(b["consumes"][res_id]), _res_name(res_id)])
+	return " · ".join(parts)
+
+func _res_name(res_id: String) -> String:
+	var defs := ResourcesDB.get_defs()
+	if defs.has(res_id):
+		return String(defs[res_id]["name"]).to_lower()
+	return res_id
+
+func _on_buy_pressed(id: String) -> void:
+	if not Buildings.buy(id):
+		return
+	var bname := String(Buildings.get_def(id)["name"])
+	Events.log_message.emit("> УСТАНОВЛЕН МОДУЛЬ: %s" % bname, "sys")
+	_refresh()
+
+func _on_building_purchased(_id: String, _count: int) -> void:
+	_refresh()
+
+func _on_tick(_delta: float) -> void:
+	_refresh()
+	if GameState.power_ratio < 1.0 and not _power_warned:
+		_power_warned = true
+		Events.log_message.emit("> ВНИМАНИЕ: ДЕФИЦИТ ЭНЕРГИИ — ПРОИЗВОДСТВО СНИЖЕНО", "alert")
+	elif GameState.power_ratio >= 1.0:
+		_power_warned = false
+
+func _refresh() -> void:
+	for id in _rows.keys():
+		var row: Dictionary = _rows[id]
+		var def := Buildings.get_def(id)
+		row["owned"].text = "×%d" % Buildings.count(id)
+		row["cost"].text = "%s %s" % [Format.num(Buildings.cost(id)), _res_name(String(def.get("cost_res", "data")))]
+		var affordable := Buildings.can_afford(id)
+		row["button"].disabled = not affordable
+		row["button"].modulate.a = 1.0 if affordable else 0.5

@@ -1,0 +1,35 @@
+extends Node
+
+var resources := { "data": 0.0, "compute": 0.0 }
+var buildings := {}                   # id -> count (пусто)
+var meta := { "version": 0, "last_saved": 0.0, "total_clicks": 0 }
+var research := {}            # id -> true (изученные узлы) — СОХРАНЯЕТСЯ
+var corruption := 0.0         # 0..1, нестабильность — СОХРАНЯЕТСЯ
+var flags := {}                # вехи (id -> true) — СОХРАНЯЕТСЯ
+
+# Аномалии — производные/транзиентные поля, не сохраняются
+var active_anomaly := {}       # {} если нет; иначе {id,name,type,mult,duration,time_left}
+var anomaly_cooldown := 0.0    # сек до следующей аномалии
+
+# Энергосеть — производные поля, не сохраняются, пересчитываются Production.recompute()
+var energy_production := 0.0
+var energy_demand := 0.0
+var power_ratio := 1.0
+var production_rates := {}    # resource -> rate (производное, НЕ сохраняется)
+
+func get_resource(id: String) -> float:
+	return float(resources.get(id, 0.0))
+
+func add_resource(id: String, amount: float) -> void:
+	resources[id] = get_resource(id) + amount
+	Events.resource_changed.emit(id, resources[id])
+
+func reset_to_default() -> void:
+	resources = { "data": 0.0, "compute": 0.0 }
+	buildings = {}
+	meta = { "version": 0, "last_saved": 0.0, "total_clicks": 0 }
+	research = {}
+	corruption = 0.0
+	flags = {}
+	active_anomaly = {}
+	anomaly_cooldown = 0.0

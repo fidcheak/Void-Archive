@@ -1,0 +1,109 @@
+class_name TopBar
+extends PanelContainer
+
+var _value_label: Label
+var _rate_label: Label
+var _compute_label: Label
+var _compute_rate_label: Label
+var _energy_label: Label
+var _power_label: Label
+var _power_bar: ColorRect
+var _power_bar_bg: ColorRect
+
+const BAR_WIDTH := 80.0
+
+func _ready() -> void:
+	var box := HBoxContainer.new()
+	add_child(box)
+
+	var name_label := Label.new()
+	name_label.text = "ДАННЫЕ:"
+	name_label.add_theme_color_override("font_color", Palette.AMBER)
+	box.add_child(name_label)
+
+	_value_label = Label.new()
+	_value_label.text = Format.num(GameState.get_resource("data"))
+	box.add_child(_value_label)
+
+	_rate_label = Label.new()
+	_rate_label.text = Format.rate(GameState.production_rates.get("data", 0.0))
+	_rate_label.add_theme_color_override("font_color", Palette.TEXT_2)
+	box.add_child(_rate_label)
+
+	box.add_child(_spacer())
+
+	var compute_name := Label.new()
+	compute_name.text = "ВЫЧИСЛЕНИЯ:"
+	compute_name.add_theme_color_override("font_color", Palette.COMPUTE)
+	box.add_child(compute_name)
+
+	_compute_label = Label.new()
+	_compute_label.text = Format.num(GameState.get_resource("compute"))
+	box.add_child(_compute_label)
+
+	_compute_rate_label = Label.new()
+	_compute_rate_label.text = Format.rate(GameState.production_rates.get("compute", 0.0))
+	_compute_rate_label.add_theme_color_override("font_color", Palette.TEXT_2)
+	box.add_child(_compute_rate_label)
+
+	box.add_child(_spacer())
+
+	var energy_name := Label.new()
+	energy_name.text = "ЭНЕРГИЯ:"
+	energy_name.add_theme_color_override("font_color", Palette.ENERGY)
+	box.add_child(energy_name)
+
+	_energy_label = Label.new()
+	box.add_child(_energy_label)
+
+	_power_label = Label.new()
+	box.add_child(_power_label)
+
+	_power_bar_bg = ColorRect.new()
+	_power_bar_bg.color = Palette.LINE
+	_power_bar_bg.custom_minimum_size = Vector2(BAR_WIDTH, 4)
+	box.add_child(_power_bar_bg)
+
+	_power_bar = ColorRect.new()
+	_power_bar.color = Palette.OK
+	_power_bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
+	_power_bar_bg.add_child(_power_bar)
+
+	Events.resource_changed.connect(_on_resource_changed)
+	Events.tick.connect(_on_tick)
+
+	_refresh_energy()
+
+func _spacer() -> Label:
+	var sep := Label.new()
+	sep.text = "   "
+	return sep
+
+func _on_resource_changed(id: String, value: float) -> void:
+	if id == "data":
+		_value_label.text = Format.num(value)
+	elif id == "compute":
+		_compute_label.text = Format.num(value)
+
+func _on_tick(_delta: float) -> void:
+	_rate_label.text = Format.rate(GameState.production_rates.get("data", 0.0))
+	_compute_rate_label.text = Format.rate(GameState.production_rates.get("compute", 0.0))
+	_refresh_energy()
+
+func _refresh_energy() -> void:
+	var prod := GameState.energy_production
+	var dem := GameState.energy_demand
+	var ratio := GameState.power_ratio
+	_energy_label.text = "%s / %s" % [Format.num(prod), Format.num(dem)]
+
+	var pct := int(round(ratio * 100.0))
+	_power_label.text = "Питание: %d%%" % pct
+
+	var color := Palette.OK
+	if ratio < 0.5:
+		color = Palette.DANGER
+	elif ratio < 1.0:
+		color = Palette.WARN
+	_power_label.add_theme_color_override("font_color", color)
+	_power_bar.color = color
+	_power_bar.size = Vector2(BAR_WIDTH * clampf(ratio, 0.0, 1.0), 4)
