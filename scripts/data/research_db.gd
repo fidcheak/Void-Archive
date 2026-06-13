@@ -22,6 +22,7 @@ static func get_list() -> Array:
 			"desc": "Сканеры работают эффективнее.",
 			"requires": ["m_basic_analysis"], "cost": { "compute": 50.0 },
 			"effects": { "mult_building": { "scanner": 1.5 } },
+			"excludes": ["m_data_compression"],
 			"pos": Vector2(-130, -150),
 		},
 		{
@@ -29,6 +30,7 @@ static func get_list() -> Array:
 			"desc": "Больше данных из тех же источников.",
 			"requires": ["m_basic_analysis"], "cost": { "compute": 75.0 },
 			"effects": { "mult_production": { "data": 1.5 } },
+			"excludes": ["m_auto_scan"],
 			"pos": Vector2(130, -150),
 		},
 		{

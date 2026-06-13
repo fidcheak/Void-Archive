@@ -109,6 +109,9 @@ func _effect_text(r: Dictionary) -> String:
 	return ", ".join(parts)
 
 func _req_text(r: Dictionary) -> String:
+	if Research.is_excluded(r["id"]):
+		return "Путь закрыт (выбран другой узел)"
+
 	var flag := String(r.get("requires_flag", ""))
 	if flag != "" and not GameState.flags.get(flag, false):
 		return "Требуется обнаружить повреждённый сектор (целостность < 50%)"

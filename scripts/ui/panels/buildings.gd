@@ -1,7 +1,7 @@
 class_name BuildingsPanel
 extends PanelContainer
 
-var _rows := {}  # id -> { "owned": Label, "cost": Label, "button": Button }
+var _rows := {}  # id -> { "name": Label, "owned": Label, "effect": Label, "cost": Label, "button": Button }
 var _power_warned := false
 
 func _ready() -> void:
@@ -30,6 +30,7 @@ func _ready() -> void:
 
 	Events.tick.connect(_on_tick)
 	Events.building_purchased.connect(_on_building_purchased)
+	Events.research_completed.connect(_on_research_completed)
 
 	_refresh()
 
@@ -56,7 +57,6 @@ func _build_row(b: Dictionary) -> Control:
 	header.add_child(owned_label)
 
 	var effect_label := Label.new()
-	effect_label.text = _effect_text(b)
 	effect_label.add_theme_color_override("font_color", Palette.TEXT_2)
 	effect_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	row.add_child(effect_label)
@@ -75,7 +75,13 @@ func _build_row(b: Dictionary) -> Control:
 	buy_button.pressed.connect(_on_buy_pressed.bind(b["id"]))
 	footer.add_child(buy_button)
 
-	_rows[b["id"]] = { "owned": owned_label, "cost": cost_label, "button": buy_button }
+	_rows[b["id"]] = {
+		"name": name_label,
+		"owned": owned_label,
+		"effect": effect_label,
+		"cost": cost_label,
+		"button": buy_button,
+	}
 	return row
 
 func _effect_text(b: Dictionary) -> String:
@@ -86,11 +92,37 @@ func _effect_text(b: Dictionary) -> String:
 		parts.append("-%s %s/сек" % [Format.num(b["consumes"][res_id]), _res_name(res_id)])
 	return " · ".join(parts)
 
+func _cost_text(id: String) -> String:
+	var c := Buildings.cost(id)
+	var parts := PackedStringArray()
+	for res_id in c.keys():
+		parts.append("%s %s" % [Format.num(c[res_id]), _res_short(res_id)])
+	return " · ".join(parts)
+
 func _res_name(res_id: String) -> String:
 	var defs := ResourcesDB.get_defs()
 	if defs.has(res_id):
 		return String(defs[res_id]["name"]).to_lower()
+	if res_id == "compute":
+		return "вычислений"
+	var cdef := CryptoDB.get_def(res_id)
+	if not cdef.is_empty():
+		return String(cdef["name"]).to_lower()
 	return res_id
+
+func _res_short(res_id: String) -> String:
+	var defs := ResourcesDB.get_defs()
+	if defs.has(res_id):
+		return String(defs[res_id]["short"])
+	if res_id == "compute":
+		return "ВЫЧ"
+	var cdef := CryptoDB.get_def(res_id)
+	if not cdef.is_empty():
+		return String(cdef["short"])
+	return res_id
+
+func _research_name(id: String) -> String:
+	return String(Research.get_def(id).get("name", id))
 
 func _on_buy_pressed(id: String) -> void:
 	if not Buildings.buy(id):
@@ -100,6 +132,9 @@ func _on_buy_pressed(id: String) -> void:
 	_refresh()
 
 func _on_building_purchased(_id: String, _count: int) -> void:
+	_refresh()
+
+func _on_research_completed(_id: String) -> void:
 	_refresh()
 
 func _on_tick(_delta: float) -> void:
@@ -115,7 +150,20 @@ func _refresh() -> void:
 		var row: Dictionary = _rows[id]
 		var def := Buildings.get_def(id)
 		row["owned"].text = "×%d" % Buildings.count(id)
-		row["cost"].text = "%s %s" % [Format.num(Buildings.cost(id)), _res_name(String(def.get("cost_res", "data")))]
-		var affordable := Buildings.can_afford(id)
-		row["button"].disabled = not affordable
-		row["button"].modulate.a = 1.0 if affordable else 0.5
+
+		if Buildings.is_unlocked(id):
+			row["name"].modulate.a = 1.0
+			row["effect"].text = _effect_text(def)
+			row["effect"].add_theme_color_override("font_color", Palette.TEXT_2)
+			row["cost"].visible = true
+			row["cost"].text = _cost_text(id)
+			var affordable := Buildings.can_afford(id)
+			row["button"].visible = true
+			row["button"].disabled = not affordable
+			row["button"].modulate.a = 1.0 if affordable else 0.5
+		else:
+			row["name"].modulate.a = 0.5
+			row["effect"].text = "🔒 Требуется исследование: %s" % _research_name(String(def.get("requires_research", "")))
+			row["effect"].add_theme_color_override("font_color", Palette.TEXT_3)
+			row["cost"].visible = false
+			row["button"].visible = false

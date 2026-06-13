@@ -15,9 +15,21 @@ static func prereqs_met(id: String) -> bool:
 			return false
 	return true
 
+static func is_excluded(id: String) -> bool:
+	var d := get_def(id)
+	for owned_id in GameState.research:
+		var od := get_def(owned_id)
+		if id in od.get("excludes", []):
+			return true
+		if owned_id in d.get("excludes", []):
+			return true
+	return false
+
 static func is_available(id: String) -> bool:
 	var d := get_def(id)
 	if d.get("stub", false):
+		return false
+	if is_excluded(id):
 		return false
 	var flag := String(d.get("requires_flag", ""))
 	if flag != "" and not GameState.flags.get(flag, false):

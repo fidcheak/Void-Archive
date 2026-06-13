@@ -1,5 +1,5 @@
 # PROJECT STATE — Архив Пустоты
-Последний слой: L6
+Последний слой: L7
 Движок: Godot 4.x. Запуск: F5.
 
 ## Что уже работает
@@ -24,6 +24,10 @@
 - Навигация экранов: главный экран (`_ops_screen`), «Дерево исследований» (`_tree_screen`, ResearchTreeScreen), «Временная линия» (`_prestige_screen`, PrestigeScreen) и «Крипто-ферма» (`_mining_screen`, MiningScreen) переключаются через `visible` в main.gd. Из правой колонки главного экрана — кнопки «⌬ ДЕРЕВО ИССЛЕДОВАНИЙ», «⟲ ВРЕМЕННАЯ ЛИНИЯ» и «⛏ КРИПТО-ФЕРМА»; «← НАЗАД» в шапке каждого экрана возвращает на главный экран. Вкладок (TabContainer) больше нет. CRT-оверлей и подача corruption — глобальные, поверх всех экранов.
 - Крипто-экономика (L6, «игра в игре»): крипто-ресурсы хранятся в `GameState.resources` по списку `CryptoDB` (каркас на 6 видов, сидировано 2 — Хеш-осколок `hsh` и Энтропий `ent`). Риги-майнеры (`MiningDB.get_rigs()`) покупаются за Данные (геометрический рост цены через `Mining.rig_cost`) и медленно добывают свою крипту (`Mining.crypto_rate`, `Mining.update` тикает в game_loop.gd). Апгрейды разгона (`MiningDB.get_upgrades()`) покупаются ЗА КРИПТУ, имеют предпосылки и множат всю добычу (`Mining.mine_mult`). Ферма самодостаточна — не использует основную энергосеть, не тратит крипту на структуры (придёт в L7+).
 - UI крипто-экономики: экран «КРИПТО-ФЕРМА» (MiningScreen) — списком (не граф): балансы крипты, риги (имя/×N/цена в Данных/кнопка «Собрать»), разгон (апгрейды владение/доступность/требования, кнопка «Активировать»). Левый сворачивающийся трекер (CryptoTracker) на главном экране: свёрнут по умолчанию (кнопка «КРИПТА ▸»), при разворачивании показывает баланс и /сек по каждой крипте; не уводит с главного экрана.
+- Мульти-ресурсная цена построек (L7): `BuildingsDB` хранит цену как словарь `cost` (resource → base) + общий `cost_mult`; `Buildings.cost(id)` возвращает словарь resource→текущая цена (геометрический рост по count), `can_afford`/`buy` проверяют и списывают ВСЕ компоненты сразу.
+- Разблокировка построек исследованиями (L7): постройка с полем `requires_research` недоступна для покупки, пока соответствующий узел не изучен (`Buildings.is_unlocked`). Демо — элитный `data_cluster` (50K Данных + 5K Вычислений + 10 Хеш-осколков, ×1.30 рост, производит 60 Данных/сек, потребляет 60 Энергии/сек), заперт за `m_power_grid` («Энергосеть v2»).
+- Взаимоисключающие пути исследований (L7): поле `excludes` на узле — изучение одного навсегда закрывает другой (`Research.is_excluded`, симметрично проверяет оба направления, встроено в `is_available`). Демо-развилка в «Пути Машин»: `m_auto_scan` ↔ `m_data_compression` взаимно исключают друг друга.
+- UI: BuildingsPanel показывает мульти-ресурсную цену («50.00K DATA · 5.00K ВЫЧ · 10 HSH», короткие имена через `ResourcesDB`/`CryptoDB`, спец-случай "compute" → "ВЫЧ"); запертые постройки показаны приглушённо с подсказкой «🔒 Требуется исследование: <имя>» и неактивной кнопкой; обновляется и на `Events.research_completed`. ResearchTreeScreen: для исключённого узла окно деталей показывает «Путь закрыт (выбран другой узел)» вместо списка предпосылок.
 
 ## Автозагрузки (порядок)
 - GameState, Events, GameLoop, SaveManager
@@ -44,13 +48,13 @@
 - scripts/data/resources_db.gd: ResourcesDB — определения "data", "energy", "compute"
 - scripts/data/crypto_db.gd: CryptoDB — список крипто-ресурсов (каркас на 6, сидировано 2: hsh, ent), get_def/ids
 - scripts/data/mining_db.gd: MiningDB — риги-майнеры (cost_base/cost_mult/cost_res/mines) и апгрейды разгона (requires/cost в крипте/mine_mult)
-- scripts/data/buildings_db.gd: BuildingsDB — определения "scanner", "reactor", "supercomputer"
-- scripts/data/research_db.gd: ResearchDB — ветки (id/name/color/locked) + список узлов с `pos`: Путь Машин (4 узла), Путь Сознания (5 узлов, открыта с начала), Путь Пустоты (4 узла, корень `v_root` с `requires_flag: "void_detected"`)
+- scripts/data/buildings_db.gd: BuildingsDB — определения "scanner", "reactor", "supercomputer", "data_cluster" (элитная, мульти-ресурсная цена `cost` словарь + `cost_mult`, заперта за `requires_research`)
+- scripts/data/research_db.gd: ResearchDB — ветки (id/name/color/locked) + список узлов с `pos`: Путь Машин (4 узла, `m_auto_scan`/`m_data_compression` взаимно исключают друг друга через `excludes`), Путь Сознания (5 узлов, открыта с начала), Путь Пустоты (4 узла, корень `v_root` с `requires_flag: "void_detected"`)
 - scripts/data/anomalies_db.gd: AnomaliesDB — список определений аномалий (signal/glitch, эффекты, веса)
 - scripts/data/meta_db.gd: MetaDB — список мета-перков (4 узла: autoclick, mult_production, start_data, echo_gain_mult), каждый с `pos` для графа
 - scripts/systems/production.gd: Production — recompute() (энергосеть+троттлинг+мульти-ресурс+множители исследований+автоклик Prestige+глобальный множитель коррупции/аномалии/мета), update(), compute_rates()
-- scripts/systems/buildings.gd: Buildings — get_def/count/cost/can_afford/buy
-- scripts/systems/research.gd: Research — get_def/is_owned/prereqs_met/is_available (учитывает requires_flag, игнорирует stub-узлы)/can_research/research + множители (mult_production, mult_building, add_base_energy)
+- scripts/systems/buildings.gd: Buildings — get_def/count/cost (словарь resource→цена)/is_unlocked (по requires_research)/can_afford/buy (списывает все компоненты цены)
+- scripts/systems/research.gd: Research — get_def/is_owned/prereqs_met/is_excluded (взаимоисключающие узлы через excludes)/is_available (учитывает requires_flag, excludes, игнорирует stub-узлы)/can_research/research + множители (mult_production, mult_building, add_base_energy)
 - scripts/systems/corruption.gd: Corruption — update() (рост от интенсивности производства, флаг void_detected), get_production_bonus_mult, purge_cost/can_purge/purge
 - scripts/systems/anomalies.gd: Anomalies — update() (таймер активной аномалии / кулдаун спавна), get_active_production_mult, взвешенный коррупцией выбор аномалии
 - scripts/systems/prestige.gd: Prestige — echo_gain/can_prestige/do_prestige (сброс забега + head start), is_owned/prereqs_met/can_buy/buy перков, get_production_mult/get_echo_gain_mult/autoclick_rate
@@ -80,7 +84,8 @@
 - GameState.resources — следующие слои добавят новые накапливаемые ресурсы по аналогии с "data"/"compute".
 - AnomaliesDB.get_list() — новые типы аномалий, в т.ч. интерактивные «поймай сигнал» (L6).
 - MetaDB.get_list() — новые мета-перки, разблокировки веток/ресурсов и сквозное Осознание архива (L5/L8), сид-модификаторы таймлайнов (L9).
-- CryptoDB.get_list() / MiningDB — ещё 4 крипто-вида и соответствующие риги/апгрейды разгона (контент); трата крипты на продвинутые структуры всех веток (→ L7).
+- CryptoDB.get_list() / MiningDB — ещё 4 крипто-вида и соответствующие риги/апгрейды разгона (контент); трата крипты на продвинутые структуры всех веток (частично уже реализована для data_cluster, дальше — контент).
+- BuildingsDB.get_list() / requires_research — элитные структуры по веткам + энерго-ветка (→ L9); ResearchDB excludes — наполнение узлов с развилками и крипто-ценами (→ L10–12).
 
 ## Известные дыры/TODO
 - Нет.
