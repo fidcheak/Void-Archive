@@ -98,8 +98,8 @@ func _nodes() -> Array:
 
 func _effect_text(m: Dictionary) -> String:
 	var eff: Dictionary = m.get("effects", {})
-	if eff.has("autoclick"):
-		return "Автоклик"
+	if eff.has("click_mult"):
+		return "Сила клика ×%s" % Format.num(float(eff["click_mult"]))
 	if eff.has("mult_production"):
 		return "Производство ×%s" % Format.num(float(eff["mult_production"]))
 	if eff.has("start_data"):

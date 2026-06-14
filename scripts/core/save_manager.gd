@@ -19,6 +19,8 @@ func save_game() -> void:
 		"run_peak_corruption": GameState.run_peak_corruption,
 		"crypto_rigs": GameState.crypto_rigs,
 		"mining_upgrades": GameState.mining_upgrades,
+		"click_power_level": GameState.click_power_level,
+		"autoclick_level": GameState.autoclick_level,
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
@@ -49,6 +51,8 @@ func load_game() -> void:
 	if data.has("run_peak_corruption"): GameState.run_peak_corruption = float(data["run_peak_corruption"])
 	if data.has("crypto_rigs"): GameState.crypto_rigs = data["crypto_rigs"]
 	if data.has("mining_upgrades"): GameState.mining_upgrades = data["mining_upgrades"]
+	if data.has("click_power_level"): GameState.click_power_level = int(data["click_power_level"])
+	if data.has("autoclick_level"): GameState.autoclick_level = int(data["autoclick_level"])
 	Research.mark_dirty()
 	Prestige.mark_dirty()
 	Abilities.mark_dirty()

@@ -61,6 +61,10 @@ func _ready() -> void:
 	center_col.add_child(center)
 	center.add_child(_build_core())
 
+	var click_panel := ClickPanel.new()
+	click_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	center_col.add_child(click_panel)
+
 	var ability_bar := AbilityBar.new()
 	center_col.add_child(ability_bar)
 
@@ -169,9 +173,10 @@ func _build_crt_overlay() -> void:
 	_crt_material = mat
 
 func _on_core_pressed() -> void:
-	GameState.add_resource("data", 1.0)
+	var amount := Clicker.click_power()
+	Clicker.do_click()
 	GameState.meta["total_clicks"] = int(GameState.meta.get("total_clicks", 0)) + 1
-	Events.data_gained.emit(1.0)
+	Events.data_gained.emit(amount)
 	if int(GameState.meta["total_clicks"]) % 10 == 0:
 		Events.log_message.emit("> ФРАГМЕНТ ИЗВЛЕЧЁН [%d]" % int(GameState.meta["total_clicks"]), "sys")
 

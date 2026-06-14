@@ -13,6 +13,7 @@ func _process(delta: float) -> void:
 	Production.update(dt)
 	Mining.update(dt)
 	Corruption.update(dt)
+	Clicker.update(dt)
 	GameState.run_best_data = maxf(GameState.run_best_data, GameState.get_resource("data"))
 	GameState.run_peak_corruption = maxf(GameState.run_peak_corruption, GameState.corruption)
 	Events.tick.emit(dt)

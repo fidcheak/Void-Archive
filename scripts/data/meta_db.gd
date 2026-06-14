@@ -15,8 +15,8 @@ static func get_list() -> Array:
 static func _build() -> void:
 	_list = [
 		{ "id": "e_autoclick", "name": "Эхо-курсор", "requires": [], "cost": 1.0,
-		  "desc": "Извлечение фрагментов продолжается само.",
-		  "effects": { "autoclick": true },
+		  "desc": "Сила клика ×2.",
+		  "effects": { "click_mult": 2.0 },
 		  "pos": Vector2(0, 0) },
 		{ "id": "e_residual_memory", "name": "Остаточная память", "requires": [], "cost": 2.0,
 		  "desc": "Прошлые линии усиливают производство (×1.5).",

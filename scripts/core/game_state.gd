@@ -26,6 +26,12 @@ var prestige_count := 0
 var run_best_data := 0.0
 var run_peak_corruption := 0.0
 
+# Клик/автокликер — уровни СОХРАНЯЮТСЯ, комбо — рантайм, не сохраняется
+var click_power_level := 0
+var autoclick_level := 0
+var combo_stacks := 0.0
+var combo_timer := 0.0
+
 # Энергосеть — производные поля, не сохраняются, пересчитываются Production.recompute()
 var energy_production := 0.0
 var energy_demand := 0.0
@@ -63,6 +69,10 @@ func reset_to_default() -> void:
 	prestige_count = 0
 	run_best_data = 0.0
 	run_peak_corruption = 0.0
+	click_power_level = 0
+	autoclick_level = 0
+	combo_stacks = 0.0
+	combo_timer = 0.0
 	Research.mark_dirty()
 	Prestige.mark_dirty()
 	Abilities.mark_dirty()

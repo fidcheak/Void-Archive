@@ -6,7 +6,7 @@ const CORRUPT_ECHO_BONUS := 0.5
 static var _dirty := true
 static var _prod_mult := 1.0
 static var _echo_gain_mult := 1.0
-static var _autoclick_rate := 0.0
+static var _click_mult := 1.0
 
 static func mark_dirty() -> void:
 	_dirty = true
@@ -79,13 +79,12 @@ static func buy(id: String) -> bool:
 static func _rebuild_cache() -> void:
 	_prod_mult = 1.0
 	_echo_gain_mult = 1.0
-	_autoclick_rate = 0.0
+	_click_mult = 1.0
 	for id in GameState.meta_upgrades:
 		var eff: Dictionary = MetaDB.get_def(id).get("effects", {})
 		_prod_mult *= float(eff.get("mult_production", 1.0))
 		_echo_gain_mult *= float(eff.get("echo_gain_mult", 1.0))
-		if bool(eff.get("autoclick", false)):
-			_autoclick_rate = click_value()
+		_click_mult *= float(eff.get("click_mult", 1.0))
 	_dirty = false
 
 static func get_production_mult() -> float:
@@ -96,9 +95,6 @@ static func get_echo_gain_mult() -> float:
 	if _dirty: _rebuild_cache()
 	return _echo_gain_mult
 
-static func click_value() -> float:
-	return 1.0
-
-static func autoclick_rate() -> float:
+static func click_mult() -> float:
 	if _dirty: _rebuild_cache()
-	return _autoclick_rate
+	return _click_mult
