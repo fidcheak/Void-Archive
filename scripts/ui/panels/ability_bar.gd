@@ -40,6 +40,7 @@ func _on_tick(_delta: float) -> void:
 	_refresh()
 
 func _refresh() -> void:
+	var any_unlocked := false
 	for id in _buttons.keys():
 		var btn: Button = _buttons[id]
 		var def := AbilitiesDB.get_def(id)
@@ -48,6 +49,7 @@ func _refresh() -> void:
 			btn.visible = false
 			continue
 		btn.visible = true
+		any_unlocked = true
 
 		if Abilities.is_active(id):
 			var left := float(GameState.active_abilities[id])
@@ -62,3 +64,5 @@ func _refresh() -> void:
 			btn.text = String(def["name"])
 			btn.disabled = false
 			btn.remove_theme_color_override("font_color")
+
+	visible = any_unlocked

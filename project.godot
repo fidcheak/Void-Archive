@@ -22,6 +22,10 @@ Events="*res://scripts/core/events.gd"
 GameLoop="*res://scripts/core/game_loop.gd"
 SaveManager="*res://scripts/core/save_manager.gd"
 
+[debug]
+
+gdscript/warnings/unused_signal=0
+
 [display]
 
 window/size/viewport_width=1280

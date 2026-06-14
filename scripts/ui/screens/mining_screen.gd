@@ -251,7 +251,6 @@ func _refresh() -> void:
 
 	for id in _rig_rows.keys():
 		var row: Dictionary = _rig_rows[id]
-		var def := MiningDB.get_rig(id)
 		row["count"].text = "×%d" % Mining.rig_count(id)
 		row["cost"].text = "%s %s" % [Format.num(Mining.rig_cost(id)), Labels.res_name("data")]
 		var affordable := Mining.can_buy_rig(id)

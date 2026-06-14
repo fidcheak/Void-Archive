@@ -13,7 +13,8 @@ var _power_bar_style: StyleBoxFlat
 var _box: HBoxContainer
 
 const BAR_WIDTH := 80.0
-const BAR_HEIGHT := 6.0
+const BAR_HEIGHT := 12.0
+const GROUP_SEPARATION := 28
 const NAV_BUTTON_SIZE := 48.0
 
 func _ready() -> void:
@@ -23,56 +24,63 @@ func _ready() -> void:
 	add_child(margin)
 
 	_box = HBoxContainer.new()
+	_box.add_theme_constant_override("separation", GROUP_SEPARATION)
 	margin.add_child(_box)
 	var box := _box
+
+	var data_group := _group()
+	box.add_child(data_group)
 
 	var name_label := Label.new()
 	name_label.text = "%s:" % Labels.res_name("data").to_upper()
 	name_label.add_theme_color_override("font_color", Palette.AMBER)
-	box.add_child(name_label)
+	data_group.add_child(name_label)
 
 	_value_label = Label.new()
 	_value_label.text = Format.num(GameState.get_resource("data"))
-	box.add_child(_value_label)
+	data_group.add_child(_value_label)
 
 	_rate_label = Label.new()
 	_rate_label.text = Format.rate(GameState.production_rates.get("data", 0.0))
 	_rate_label.add_theme_color_override("font_color", Palette.TEXT_2)
-	box.add_child(_rate_label)
+	data_group.add_child(_rate_label)
 
-	box.add_child(_spacer())
+	var compute_group := _group()
+	box.add_child(compute_group)
 
 	var compute_name := Label.new()
 	compute_name.text = "%s:" % Labels.res_name("compute").to_upper()
 	compute_name.add_theme_color_override("font_color", Palette.COMPUTE)
-	box.add_child(compute_name)
+	compute_group.add_child(compute_name)
 
 	_compute_label = Label.new()
 	_compute_label.text = Format.num(GameState.get_resource("compute"))
-	box.add_child(_compute_label)
+	compute_group.add_child(_compute_label)
 
 	_compute_rate_label = Label.new()
 	_compute_rate_label.text = Format.rate(GameState.production_rates.get("compute", 0.0))
 	_compute_rate_label.add_theme_color_override("font_color", Palette.TEXT_2)
-	box.add_child(_compute_rate_label)
+	compute_group.add_child(_compute_rate_label)
 
-	box.add_child(_spacer())
+	var energy_group := _group()
+	box.add_child(energy_group)
 
 	var energy_name := Label.new()
 	energy_name.text = "%s:" % Labels.res_name("energy").to_upper()
 	energy_name.add_theme_color_override("font_color", Palette.ENERGY)
-	box.add_child(energy_name)
+	energy_group.add_child(energy_name)
 
 	_energy_label = Label.new()
-	box.add_child(_energy_label)
+	energy_group.add_child(_energy_label)
 
 	_power_label = Label.new()
-	box.add_child(_power_label)
+	energy_group.add_child(_power_label)
 
 	_power_bar_bg = Panel.new()
 	_power_bar_bg.custom_minimum_size = Vector2(BAR_WIDTH, BAR_HEIGHT)
+	_power_bar_bg.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_power_bar_bg.add_theme_stylebox_override("panel", _bar_style(Palette.LINE, BAR_HEIGHT))
-	box.add_child(_power_bar_bg)
+	energy_group.add_child(_power_bar_bg)
 
 	_power_bar = Panel.new()
 	_power_bar.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
@@ -89,20 +97,21 @@ func _ready() -> void:
 
 	_refresh_energy()
 
+func _group() -> HBoxContainer:
+	var g := HBoxContainer.new()
+	g.add_theme_constant_override("separation", 6)
+	return g
+
 func add_nav_button(glyph: String, tooltip: String, callback: Callable) -> Button:
 	var btn := Button.new()
 	btn.text = glyph
 	btn.tooltip_text = tooltip
 	btn.custom_minimum_size = Vector2(NAV_BUTTON_SIZE, NAV_BUTTON_SIZE)
-	btn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	btn.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	btn.pressed.connect(callback)
 	_box.add_child(btn)
 	return btn
-
-func _spacer() -> Label:
-	var sep := Label.new()
-	sep.text = "   "
-	return sep
 
 func _on_resource_changed(id: String, value: float) -> void:
 	if id == "data":
