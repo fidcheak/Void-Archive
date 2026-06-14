@@ -7,6 +7,7 @@ var detail_overlay: Control
 
 var _list: VBoxContainer
 var _icons := {}  # id -> { "root": Control, "button": Button, "badge": Label }
+var _acc := 0.0
 
 var _detail_title: Label
 var _detail_count: Label
@@ -174,10 +175,14 @@ func _on_close_pressed() -> void:
 func _on_building_purchased(_id: String, _count: int) -> void:
 	_refresh()
 
-func _on_tick(_delta: float) -> void:
+func _on_tick(delta: float) -> void:
+	_acc += delta
+	if _acc < 0.1: return
+	_acc = 0.0
 	_refresh()
 
 func _refresh() -> void:
+	if not is_visible_in_tree(): return
 	for id in _icons.keys():
 		var row: Dictionary = _icons[id]
 		var count := Buildings.count(id)

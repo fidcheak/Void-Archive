@@ -3,6 +3,14 @@ class_name Prestige
 const ECHO_SCALE := 10000.0   # данных для 1 эхо (тюнится)
 const CORRUPT_ECHO_BONUS := 0.5
 
+static var _dirty := true
+static var _prod_mult := 1.0
+static var _echo_gain_mult := 1.0
+static var _autoclick_rate := 0.0
+
+static func mark_dirty() -> void:
+	_dirty = true
+
 # ---- эхо ----
 static func echo_gain() -> float:
 	if GameState.run_best_data < ECHO_SCALE:
@@ -37,6 +45,7 @@ static func _reset_run() -> void:
 	GameState.anomaly_cooldown = 0.0
 	GameState.run_best_data = 0.0
 	GameState.run_peak_corruption = 0.0
+	Research.mark_dirty()
 
 static func _apply_head_start() -> void:
 	for id in GameState.meta_upgrades:
@@ -62,27 +71,34 @@ static func buy(id: String) -> bool:
 		return false
 	GameState.chrono_echo -= float(MetaDB.get_def(id)["cost"])
 	GameState.meta_upgrades[id] = true
+	mark_dirty()
 	Events.meta_upgrade_bought.emit(id)
 	return true
 
 # ---- эффекты для движка ----
-static func get_production_mult() -> float:
-	var m := 1.0
+static func _rebuild_cache() -> void:
+	_prod_mult = 1.0
+	_echo_gain_mult = 1.0
+	_autoclick_rate = 0.0
 	for id in GameState.meta_upgrades:
-		m *= float(MetaDB.get_def(id).get("effects", {}).get("mult_production", 1.0))
-	return m
+		var eff: Dictionary = MetaDB.get_def(id).get("effects", {})
+		_prod_mult *= float(eff.get("mult_production", 1.0))
+		_echo_gain_mult *= float(eff.get("echo_gain_mult", 1.0))
+		if bool(eff.get("autoclick", false)):
+			_autoclick_rate = click_value()
+	_dirty = false
+
+static func get_production_mult() -> float:
+	if _dirty: _rebuild_cache()
+	return _prod_mult
 
 static func get_echo_gain_mult() -> float:
-	var m := 1.0
-	for id in GameState.meta_upgrades:
-		m *= float(MetaDB.get_def(id).get("effects", {}).get("echo_gain_mult", 1.0))
-	return m
+	if _dirty: _rebuild_cache()
+	return _echo_gain_mult
 
 static func click_value() -> float:
 	return 1.0
 
 static func autoclick_rate() -> float:
-	for id in GameState.meta_upgrades:
-		if bool(MetaDB.get_def(id).get("effects", {}).get("autoclick", false)):
-			return click_value()   # клик/сек эквивалент
-	return 0.0
+	if _dirty: _rebuild_cache()
+	return _autoclick_rate

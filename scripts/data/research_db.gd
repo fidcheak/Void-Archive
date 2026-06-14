@@ -1,16 +1,32 @@
 class_name ResearchDB
 
+static var _built := false
+static var _branches: Array = []
+static var _list: Array = []
+static var _by_id: Dictionary = {}
+
 # опционально для группировки/заголовков; Сознание и Пустота — заглушки на L5
 static func get_branches() -> Array:
-	return [
+	if not _built: _build()
+	return _branches
+
+static func get_list() -> Array:
+	if not _built: _build()
+	return _list
+
+static func get_def(id: String) -> Dictionary:
+	if not _built: _build()
+	return _by_id.get(id, {})
+
+static func _build() -> void:
+	_branches = [
 		{ "id": "machines",  "name": "Путь Машин",    "color": Palette.AMBER,  "locked": false },
 		{ "id": "cognition", "name": "Путь Сознания", "color": Palette.ENERGY, "locked": false },
 		{ "id": "void",      "name": "Путь Пустоты",  "color": Palette.VOID,   "locked": true },
 		{ "id": "energy",    "name": "Путь Энергии",  "color": Palette.ENERGY_BRANCH, "locked": false },
 	]
 
-static func get_list() -> Array:
-	return [
+	_list = [
 		{
 			"id": "m_basic_analysis", "name": "Базовый анализ", "branch": "machines",
 			"desc": "Структурирование сырых фрагментов.",
@@ -147,3 +163,7 @@ static func get_list() -> Array:
 			"pos": Vector2(-660, -300),
 		},
 	]
+	_by_id.clear()
+	for d in _list:
+		_by_id[d["id"]] = d
+	_built = true

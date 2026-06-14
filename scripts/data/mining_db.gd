@@ -1,7 +1,29 @@
 class_name MiningDB
 
+static var _built := false
+static var _rigs: Array = []
+static var _rigs_by_id: Dictionary = {}
+static var _upgrades: Array = []
+static var _upgrades_by_id: Dictionary = {}
+
 static func get_rigs() -> Array:
-	return [
+	if not _built: _build()
+	return _rigs
+
+static func get_upgrades() -> Array:
+	if not _built: _build()
+	return _upgrades
+
+static func get_rig(id: String) -> Dictionary:
+	if not _built: _build()
+	return _rigs_by_id.get(id, {})
+
+static func get_upgrade(id: String) -> Dictionary:
+	if not _built: _build()
+	return _upgrades_by_id.get(id, {})
+
+static func _build() -> void:
+	_rigs = [
 		{ "id": "rig_hsh", "name": "Хеш-модуль", "desc": "Медленно добывает Хеш-осколки.",
 		  "cost_base": 5000.0, "cost_mult": 1.25, "cost_res": "data",
 		  "mines": { "hsh": 0.02 } },
@@ -21,9 +43,7 @@ static func get_rigs() -> Array:
 		  "cost_base": 3000000.0, "cost_mult": 1.35, "cost_res": "data",
 		  "mines": { "ech": 0.006 } },
 	]
-
-static func get_upgrades() -> Array:
-	return [
+	_upgrades = [
 		{ "id": "mu_overclock", "name": "Разгон хешрейта", "desc": "Вся добыча ×2.",
 		  "requires": [], "cost": { "hsh": 5.0 }, "effects": { "mine_mult": 2.0 } },
 		{ "id": "mu_parallel", "name": "Параллельный майнинг", "desc": "Вся добыча ×1.5.",
@@ -35,15 +55,10 @@ static func get_upgrades() -> Array:
 		{ "id": "mu_singularity", "name": "Сингулярный майнинг", "desc": "Вся добыча ×3.",
 		  "requires": ["mu_resonance"], "cost": { "ech": 3.0 }, "effects": { "mine_mult": 3.0 } },
 	]
-
-static func get_rig(id: String) -> Dictionary:
-	for r in get_rigs():
-		if r["id"] == id:
-			return r
-	return {}
-
-static func get_upgrade(id: String) -> Dictionary:
-	for u in get_upgrades():
-		if u["id"] == id:
-			return u
-	return {}
+	_rigs_by_id.clear()
+	for d in _rigs:
+		_rigs_by_id[d["id"]] = d
+	_upgrades_by_id.clear()
+	for d in _upgrades:
+		_upgrades_by_id[d["id"]] = d
+	_built = true

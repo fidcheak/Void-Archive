@@ -4,6 +4,7 @@ extends PanelContainer
 signal mining_pressed
 
 var _rows := {}  # id -> { "balance": Label, "rate": Label }
+var _acc := 0.0
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(240, 0)
@@ -68,10 +69,14 @@ func _build_row(c: Dictionary) -> Control:
 	_rows[c["id"]] = { "balance": balance_label, "rate": rate_label }
 	return row
 
-func _on_tick(_delta: float) -> void:
+func _on_tick(delta: float) -> void:
+	_acc += delta
+	if _acc < 0.1: return
+	_acc = 0.0
 	_refresh()
 
 func _refresh() -> void:
+	if not is_visible_in_tree(): return
 	for id in _rows.keys():
 		var row: Dictionary = _rows[id]
 		row["balance"].text = Format.num(GameState.get_resource(id))

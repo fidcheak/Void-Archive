@@ -1,7 +1,19 @@
 class_name BuildingsDB
 
+static var _built := false
+static var _list: Array = []
+static var _by_id: Dictionary = {}
+
 static func get_list() -> Array:
-	return [
+	if not _built: _build()
+	return _list
+
+static func get_def(id: String) -> Dictionary:
+	if not _built: _build()
+	return _by_id.get(id, {})
+
+static func _build() -> void:
+	_list = [
 		{
 			"id": "scanner", "name": "Сканер данных",
 			"desc": "Извлекает фрагменты из повреждённых секторов.",
@@ -64,3 +76,7 @@ static func get_list() -> Array:
 			"category": "Вычисления", "icon": "N", "icon_color": Palette.COMPUTE,
 		},
 	]
+	_by_id.clear()
+	for d in _list:
+		_by_id[d["id"]] = d
+	_built = true

@@ -1,10 +1,7 @@
 class_name Buildings
 
 static func get_def(id: String) -> Dictionary:
-	for b in BuildingsDB.get_list():
-		if b["id"] == id:
-			return b
-	return {}
+	return BuildingsDB.get_def(id)
 
 static func count(id: String) -> int:
 	return int(GameState.buildings.get(id, 0))

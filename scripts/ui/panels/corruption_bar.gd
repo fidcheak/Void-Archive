@@ -8,6 +8,7 @@ var _pct_label: Label
 var _bar: ProgressBar
 var _fill_style: StyleBoxFlat
 var _purge_button: Button
+var _acc := 0.0
 
 func _ready() -> void:
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -56,7 +57,10 @@ func _ready() -> void:
 
 	_refresh()
 
-func _on_tick(_delta: float) -> void:
+func _on_tick(delta: float) -> void:
+	_acc += delta
+	if _acc < 0.1: return
+	_acc = 0.0
 	_refresh()
 
 func _on_purge_pressed() -> void:

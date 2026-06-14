@@ -11,6 +11,7 @@ var _gain_label: Label
 var _prestige_button: Button
 var _confirm_armed := false
 var _confirm_timer: Timer
+var _acc := 0.0
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -143,7 +144,10 @@ func _on_prestige_done(_echo_gained: float) -> void:
 func _on_meta_upgrade_bought(_id: String) -> void:
 	_refresh()
 
-func _on_tick(_delta: float) -> void:
+func _on_tick(delta: float) -> void:
+	_acc += delta
+	if _acc < 0.1: return
+	_acc = 0.0
 	_refresh()
 
 func _on_visibility_changed() -> void:
@@ -151,6 +155,7 @@ func _on_visibility_changed() -> void:
 		_refresh()
 
 func _refresh() -> void:
+	if not is_visible_in_tree(): return
 	_echo_label.text = "ХРОНО-ЭХО: %s" % Format.num(GameState.chrono_echo)
 	_gain_label.text = "Получишь: +%s" % Format.num(Prestige.echo_gain())
 

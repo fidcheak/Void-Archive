@@ -1,10 +1,15 @@
 class_name Research
 
+static var _dirty := true
+static var _prod_mult: Dictionary = {}
+static var _building_mult: Dictionary = {}
+static var _base_energy_bonus := 0.0
+
+static func mark_dirty() -> void:
+	_dirty = true
+
 static func get_def(id: String) -> Dictionary:
-	for r in ResearchDB.get_list():
-		if r["id"] == id:
-			return r
-	return {}
+	return ResearchDB.get_def(id)
 
 static func is_owned(id: String) -> bool:
 	return GameState.research.has(id)
@@ -53,28 +58,32 @@ static func research(id: String) -> bool:
 	for res in get_def(id).get("cost", {}):
 		GameState.add_resource(res, -float(get_def(id)["cost"][res]))
 	GameState.research[id] = true
+	mark_dirty()
 	Events.research_completed.emit(id)
 	return true
 
 # ---- множители для Production ----
-static func get_production_mult(resource: String) -> float:
-	var m := 1.0
+static func _rebuild_cache() -> void:
+	_prod_mult.clear()
+	_building_mult.clear()
+	_base_energy_bonus = 0.0
 	for id in GameState.research:
-		var mp: Dictionary = get_def(id).get("effects", {}).get("mult_production", {})
-		if mp.has(resource):
-			m *= float(mp[resource])
-	return m
+		var eff: Dictionary = get_def(id).get("effects", {})
+		for res in eff.get("mult_production", {}):
+			_prod_mult[res] = float(_prod_mult.get(res, 1.0)) * float(eff["mult_production"][res])
+		for bid in eff.get("mult_building", {}):
+			_building_mult[bid] = float(_building_mult.get(bid, 1.0)) * float(eff["mult_building"][bid])
+		_base_energy_bonus += float(eff.get("add_base_energy", 0.0))
+	_dirty = false
+
+static func get_production_mult(resource: String) -> float:
+	if _dirty: _rebuild_cache()
+	return float(_prod_mult.get(resource, 1.0))
 
 static func get_building_mult(building_id: String) -> float:
-	var m := 1.0
-	for id in GameState.research:
-		var mb: Dictionary = get_def(id).get("effects", {}).get("mult_building", {})
-		if mb.has(building_id):
-			m *= float(mb[building_id])
-	return m
+	if _dirty: _rebuild_cache()
+	return float(_building_mult.get(building_id, 1.0))
 
 static func get_base_energy_bonus() -> float:
-	var b := 0.0
-	for id in GameState.research:
-		b += float(get_def(id).get("effects", {}).get("add_base_energy", 0.0))
-	return b
+	if _dirty: _rebuild_cache()
+	return _base_energy_bonus

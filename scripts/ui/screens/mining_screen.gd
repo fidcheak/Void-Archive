@@ -6,6 +6,7 @@ signal back_pressed
 var _balance_rows := {}   # crypto_id -> { "balance": Label, "rate": Label }
 var _rig_rows := {}       # rig_id -> { "count": Label, "cost": Label, "button": Button }
 var _upg_rows := {}       # upg_id -> { "status": Label, "desc": Label, "cost": Label, "button": Button }
+var _acc := 0.0
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -236,7 +237,10 @@ func _on_mining_upgrade_bought(_id: String) -> void:
 func _on_resource_changed(_id: String, _value: float) -> void:
 	_refresh()
 
-func _on_tick(_delta: float) -> void:
+func _on_tick(delta: float) -> void:
+	_acc += delta
+	if _acc < 0.1: return
+	_acc = 0.0
 	_refresh()
 
 func _on_visibility_changed() -> void:
@@ -244,6 +248,7 @@ func _on_visibility_changed() -> void:
 		_refresh()
 
 func _refresh() -> void:
+	if not is_visible_in_tree(): return
 	for id in _balance_rows.keys():
 		var row: Dictionary = _balance_rows[id]
 		row["balance"].text = Format.num(GameState.get_resource(id))

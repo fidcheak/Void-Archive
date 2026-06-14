@@ -49,6 +49,9 @@ func load_game() -> void:
 	if data.has("run_peak_corruption"): GameState.run_peak_corruption = float(data["run_peak_corruption"])
 	if data.has("crypto_rigs"): GameState.crypto_rigs = data["crypto_rigs"]
 	if data.has("mining_upgrades"): GameState.mining_upgrades = data["mining_upgrades"]
+	Research.mark_dirty()
+	Prestige.mark_dirty()
+	Abilities.mark_dirty()
 	_apply_offline()
 	Events.game_loaded.emit()
 	Events.resource_changed.emit("data", GameState.get_resource("data"))

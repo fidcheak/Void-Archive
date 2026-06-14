@@ -3,6 +3,7 @@ extends TabContainer
 
 var _rows := {}  # id -> { "name": Label, "effect": Label, "cost": Label, "button": Button }
 var _power_warned := false
+var _acc := 0.0
 
 func _ready() -> void:
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -124,15 +125,21 @@ func _on_research_completed(_id: String) -> void:
 func _on_resource_changed(_id: String, _value: float) -> void:
 	_refresh()
 
-func _on_tick(_delta: float) -> void:
-	_refresh()
+func _on_tick(delta: float) -> void:
 	if GameState.power_ratio < 1.0 and not _power_warned:
 		_power_warned = true
 		Events.log_message.emit("> ВНИМАНИЕ: ДЕФИЦИТ ЭНЕРГИИ — ПРОИЗВОДСТВО СНИЖЕНО", "alert")
 	elif GameState.power_ratio >= 1.0:
 		_power_warned = false
 
+	_acc += delta
+	if _acc < 0.1: return
+	_acc = 0.0
+	if not is_visible_in_tree(): return
+	_refresh()
+
 func _refresh() -> void:
+	if not is_visible_in_tree(): return
 	for id in _rows.keys():
 		var row: Dictionary = _rows[id]
 		var def := Buildings.get_def(id)

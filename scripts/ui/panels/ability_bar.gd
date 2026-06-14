@@ -2,6 +2,7 @@ class_name AbilityBar
 extends PanelContainer
 
 var _buttons := {}  # id -> Button
+var _acc := 0.0
 
 func _ready() -> void:
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -36,7 +37,10 @@ func _on_research_completed(_id: String) -> void:
 func _on_ability_activated(_id: String) -> void:
 	_refresh()
 
-func _on_tick(_delta: float) -> void:
+func _on_tick(delta: float) -> void:
+	_acc += delta
+	if _acc < 0.1: return
+	_acc = 0.0
 	_refresh()
 
 func _refresh() -> void:

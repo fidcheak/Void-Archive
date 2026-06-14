@@ -1,7 +1,14 @@
 class_name AnomaliesDB
 
+static var _built := false
+static var _list: Array = []
+
 static func get_list() -> Array:
-	return [
+	if not _built: _build()
+	return _list
+
+static func _build() -> void:
+	_list = [
 		{ "id": "signal_unknown", "name": "Неизвестный сигнал", "type": "signal",
 		  "duration": 30.0, "effect": { "mult_production": 3.0 },
 		  "base_weight": 1.0, "corruption_bias": -0.5,
@@ -23,3 +30,4 @@ static func get_list() -> Array:
 		  "base_weight": 0.2, "corruption_bias": 1.2, "lore": true,
 		  "msg": "> ...ты слышишь это?" },
 	]
+	_built = true

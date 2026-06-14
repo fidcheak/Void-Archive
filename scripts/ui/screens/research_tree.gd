@@ -167,5 +167,6 @@ func _on_visibility_changed() -> void:
 		_refresh()
 
 func _refresh() -> void:
+	if not is_visible_in_tree(): return
 	_compute_label.text = Format.num(GameState.get_resource("compute"))
 	_graph.refresh()

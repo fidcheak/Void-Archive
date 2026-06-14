@@ -11,6 +11,7 @@ var _power_bar: Panel
 var _power_bar_bg: Panel
 var _power_bar_style: StyleBoxFlat
 var _box: HBoxContainer
+var _acc := 0.0
 
 const BAR_WIDTH := 80.0
 const BAR_HEIGHT := 12.0
@@ -119,7 +120,10 @@ func _on_resource_changed(id: String, value: float) -> void:
 	elif id == "compute":
 		_compute_label.text = Format.num(value)
 
-func _on_tick(_delta: float) -> void:
+func _on_tick(delta: float) -> void:
+	_acc += delta
+	if _acc < 0.1: return
+	_acc = 0.0
 	_rate_label.text = Format.rate(GameState.production_rates.get("data", 0.0))
 	_compute_rate_label.text = Format.rate(GameState.production_rates.get("compute", 0.0))
 	_refresh_energy()

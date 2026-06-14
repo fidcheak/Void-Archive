@@ -63,3 +63,6 @@ func reset_to_default() -> void:
 	prestige_count = 0
 	run_best_data = 0.0
 	run_peak_corruption = 0.0
+	Research.mark_dirty()
+	Prestige.mark_dirty()
+	Abilities.mark_dirty()

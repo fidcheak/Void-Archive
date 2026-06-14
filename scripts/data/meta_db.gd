@@ -1,13 +1,19 @@
 class_name MetaDB
 
+static var _built := false
+static var _list: Array = []
+static var _by_id: Dictionary = {}
+
 static func get_def(id: String) -> Dictionary:
-	for m in get_list():
-		if m["id"] == id:
-			return m
-	return {}
+	if not _built: _build()
+	return _by_id.get(id, {})
 
 static func get_list() -> Array:
-	return [
+	if not _built: _build()
+	return _list
+
+static func _build() -> void:
+	_list = [
 		{ "id": "e_autoclick", "name": "Эхо-курсор", "requires": [], "cost": 1.0,
 		  "desc": "Извлечение фрагментов продолжается само.",
 		  "effects": { "autoclick": true },
@@ -25,3 +31,7 @@ static func get_list() -> Array:
 		  "effects": { "echo_gain_mult": 1.5 },
 		  "pos": Vector2(170, -300) },
 	]
+	_by_id.clear()
+	for d in _list:
+		_by_id[d["id"]] = d
+	_built = true
