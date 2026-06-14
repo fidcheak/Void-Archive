@@ -6,6 +6,7 @@ static func get_branches() -> Array:
 		{ "id": "machines",  "name": "Путь Машин",    "color": Palette.AMBER,  "locked": false },
 		{ "id": "cognition", "name": "Путь Сознания", "color": Palette.ENERGY, "locked": false },
 		{ "id": "void",      "name": "Путь Пустоты",  "color": Palette.VOID,   "locked": true },
+		{ "id": "energy",    "name": "Путь Энергии",  "color": Palette.ENERGY_BRANCH, "locked": false },
 	]
 
 static func get_list() -> Array:
@@ -102,5 +103,47 @@ static func get_list() -> Array:
 			"requires": ["v_whisper"], "cost": { "compute": 800.0 },
 			"effects": { "mult_production": { "data": 3.0 }, "add_base_energy": -50.0 },
 			"pos": Vector2(360, -300),
+		},
+		{
+			"id": "en_root", "name": "Энергетика", "branch": "energy",
+			"desc": "Освоение энергосистем архива.",
+			"requires": [], "cost": { "compute": 120.0 },
+			"effects": { "add_base_energy": 20.0 },
+			"pos": Vector2(0, 150),
+		},
+		{
+			"id": "en_fusion", "name": "Термоядерный синтез", "branch": "energy",
+			"desc": "Открывает Термоядерный реактор.",
+			"requires": ["en_root"], "excludes": ["en_efficiency"], "cost": { "compute": 400.0 },
+			"effects": {},
+			"pos": Vector2(-130, 300),
+		},
+		{
+			"id": "en_efficiency", "name": "Сверхпроводники", "branch": "energy",
+			"desc": "Существующие реакторы эффективнее (×2).",
+			"requires": ["en_root"], "excludes": ["en_fusion"], "cost": { "compute": 400.0 },
+			"effects": { "mult_building": { "reactor": 2.0 } },
+			"pos": Vector2(130, 300),
+		},
+		{
+			"id": "en_singularity", "name": "Сингулярный реактор", "branch": "energy",
+			"desc": "Открывает Сингулярный генератор.",
+			"requires": ["en_fusion"], "cost": { "compute": 2000.0 },
+			"effects": {},
+			"pos": Vector2(-130, 450),
+		},
+		{
+			"id": "m_industrial", "name": "Промышленный масштаб", "branch": "machines",
+			"desc": "Открывает Квантовый дата-центр.",
+			"requires": ["m_power_grid"], "cost": { "compute": 800.0 },
+			"effects": {},
+			"pos": Vector2(-260, -300),
+		},
+		{
+			"id": "c_neural", "name": "Нейроморфика", "branch": "cognition",
+			"desc": "Открывает Нейросеть.",
+			"requires": ["c_oversight"], "cost": { "compute": 1200.0 },
+			"effects": {},
+			"pos": Vector2(-660, -300),
 		},
 	]

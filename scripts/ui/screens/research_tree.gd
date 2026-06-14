@@ -111,6 +111,9 @@ func _effect_text(r: Dictionary) -> String:
 	var ability := _ability_unlock(r["id"])
 	if not ability.is_empty():
 		parts.append("Открывает: %s" % String(ability["name"]))
+	var building := _building_unlock(r["id"])
+	if not building.is_empty():
+		parts.append("Открывает постройку: %s" % String(building["name"]))
 	if parts.is_empty():
 		return "—"
 	return ", ".join(parts)
@@ -119,6 +122,12 @@ func _ability_unlock(node_id: String) -> Dictionary:
 	for a in AbilitiesDB.get_list():
 		if String(a.get("unlocked_by", "")) == node_id:
 			return a
+	return {}
+
+func _building_unlock(node_id: String) -> Dictionary:
+	for b in BuildingsDB.get_list():
+		if String(b.get("requires_research", "")) == node_id:
+			return b
 	return {}
 
 func _req_text(r: Dictionary) -> String:

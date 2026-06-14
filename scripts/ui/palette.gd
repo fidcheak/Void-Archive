@@ -20,3 +20,4 @@ const COMPUTE := Color("8aa0ff")      # мягкий индиго — отдел
 const CORRUPT := Color("c0432f")      # красный распада
 const SIGNAL := Color("5fe0a8")       # зелёный «хорошей» аномалии
 const CRYPTO := Color("c9a94f")       # тускло-золотой акцент крипто-секции
+const ENERGY_BRANCH := Color("7bd88f")   # зелёный — ветка энергии в дереве

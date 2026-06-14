@@ -1,5 +1,5 @@
 # PROJECT STATE — Архив Пустоты
-Последний слой: L9(UI-2)
+Последний слой: L10
 Движок: Godot 4.x. Запуск: F5.
 
 ## Что уже работает
@@ -32,6 +32,8 @@
 - Путь Пустоты переработан (L8): узлы теперь несут постоянные дебафы как цену (через существующие эффекты со штрафными значениями) и для трёх из них — анлок активки. `v_root` → дебаф `add_base_energy: -25` + открывает «Всплеск данных»; `v_whisper` → дебаф `mult_production:{data:0.7}` + открывает «Всплеск вычислений»; `v_hunger` → дебаф `mult_production:{compute:0.7}` + открывает «Прорыв питания»; `v_communion` — без активки, азартный узел: `mult_production:{data:3.0}` + `add_base_energy:-50`.
 - UI активок: AbilityBar — горизонтальный ряд кнопок на главном экране (под ядром, в центральной колонке), кнопка скрыта пока не разблокирована; состояния: готова (имя способности, активна) / активна (цвет Palette.SIGNAL, «АКТИВНО Nс») / кулдаун («Nс», неактивна). ResearchTreeScreen: эффект-текст узлов Пустоты помечает штрафные множители и `add_base_energy < 0` как «(дебафф)», и добавляет строку «Открывает: <способность>» для узлов-анлоков.
 - Пересборка сетки главного экрана (L9, UI-1): `_ops_screen` — корневой VBoxContainer (топбар → бар целостности на всю ширину → средняя строка HBoxContainer → терминал фикс. высоты), все контейнеры на anchors/size_flags, без перекрытий при ресайзе. Топбар: квадратные кнопки-«экраны» «⌬»/«⟲» через `TopBar.add_nav_button()` (HBoxContainer + expand-спейсер, прижаты к правому краю). Бар целостности переведён на `ProgressBar` с `background`/`fill` стилями (корректная заливка на всю высоту от левого края, % и цвет по коррупции). Баннер аномалии — в центральной колонке, `SIZE_SHRINK_CENTER`, не растягивается. Терминал — фикс. высота `TERMINAL_HEIGHT=180`. Крипто-панель — фикс. левая колонка ~240px, всегда развёрнута. Единый helper `scripts/ui/labels.gd` (`Labels.res_name`/`res_short`, мердж `ResourcesDB.get_defs()` + `CryptoDB.get_list()`) — единственный источник переводов ресурсов для топбара/цен/фермы/деревьев; ResourcesDB дополнен записью "compute".
+- Путь Энергии (L10): 4-я ветка дерева исследований (`Palette.ENERGY_BRANCH`, зелёный), открыта с начала. `en_root` («Энергетика», +20 базовой энергии) → развилка `en_fusion` («Термоядерный синтез», открывает Термоядерный реактор) ↔ `en_efficiency` («Сверхпроводники», ×2 к существующим Реакторам через `mult_building`), взаимно исключают друг друга через `excludes`. `en_fusion` → `en_singularity` («Сингулярный реактор», открывает Сингулярный генератор). Элитные узлы-анлоки без собственных эффектов: `m_industrial` (Путь Машин, открывает Квантовый дата-центр) и `c_neural` (Путь Сознания, открывает Нейросеть).
+- Продвинутые структуры (L10): `fusion_reactor` (Термоядерный реактор, 80K Данных + 8K Вычислений + 15 HSH, ×1.30, +80 Энергии/сек, заперт за `en_fusion`), `singularity_gen` (Сингулярный генератор, 1M Данных + 100K Вычислений + 50 HSH + 30 ENT, ×1.35, +800 Энергии/сек, заперт за `en_singularity`), `quantum_dc` (Квантовый дата-центр, 200K Данных + 20K Вычислений + 25 HSH, ×1.32, +300 Данных/сек, -300 Энергии/сек, заперт за `m_industrial`), `neural_net` (Нейросеть, 300K Данных + 40K Вычислений + 30 ENT, ×1.34, +50 Вычислений/сек, -200 Энергии/сек, заперт за `c_neural`). Все — мульти-ресурсная цена (включая крипту), category/icon как у существующих зданий (видны в ростере/вкладках покупки). ResearchTreeScreen: эффект-текст узлов-анлоков (с пустыми `effects`) показывает строку «Открывает постройку: <имя>».
 
 ## Автозагрузки (порядок)
 - GameState, Events, GameLoop, SaveManager
@@ -53,8 +55,8 @@
 - scripts/ui/labels.gd: Labels — единый helper переводов ресурсов (`res_name`/`res_short`), мердж ResourcesDB.get_defs() + CryptoDB.get_list()
 - scripts/data/crypto_db.gd: CryptoDB — список крипто-ресурсов (каркас на 6, сидировано 2: hsh, ent), get_def/ids
 - scripts/data/mining_db.gd: MiningDB — риги-майнеры (cost_base/cost_mult/cost_res/mines) и апгрейды разгона (requires/cost в крипте/mine_mult)
-- scripts/data/buildings_db.gd: BuildingsDB — определения "scanner", "reactor", "supercomputer", "data_cluster" (элитная, мульти-ресурсная цена `cost` словарь + `cost_mult`, заперта за `requires_research`); у каждой — `category`/`icon`/`icon_color` для ростера и вкладок покупки
-- scripts/data/research_db.gd: ResearchDB — ветки (id/name/color/locked) + список узлов с `pos`: Путь Машин (4 узла, `m_auto_scan`/`m_data_compression` взаимно исключают друг друга через `excludes`), Путь Сознания (5 узлов, открыта с начала), Путь Пустоты (4 узла, корень `v_root` с `requires_flag: "void_detected"`; все 4 узла несут постоянные дебафы, три из них — анлоки активок через `AbilitiesDB.unlocked_by`)
+- scripts/data/buildings_db.gd: BuildingsDB — определения "scanner", "reactor", "supercomputer", "data_cluster" (элитная, заперта за `m_power_grid`), + продвинутые L10: "fusion_reactor"/"singularity_gen" (Энергия, заперты за `en_fusion`/`en_singularity`), "quantum_dc" (Данные, заперта за `m_industrial`), "neural_net" (Вычисления, заперта за `c_neural`) — все с мульти-ресурсной ценой `cost`/`cost_mult` (включая крипту) и `category`/`icon`/`icon_color` для ростера и вкладок покупки
+- scripts/data/research_db.gd: ResearchDB — ветки (id/name/color/locked) + список узлов с `pos`: Путь Машин (5 узлов, `m_auto_scan`/`m_data_compression` взаимно исключают друг друга через `excludes`, `m_industrial` — анлок Квантового дата-центра), Путь Сознания (6 узлов, открыта с начала, `c_neural` — анлок Нейросети), Путь Пустоты (4 узла, корень `v_root` с `requires_flag: "void_detected"`; все 4 узла несут постоянные дебафы, три из них — анлоки активок через `AbilitiesDB.unlocked_by`), Путь Энергии (4 узла, открыта с начала: `en_root` → развилка `en_fusion`/`en_efficiency` через `excludes` → `en_singularity`, анлоки Термоядерного реактора/Сингулярного генератора)
 - scripts/data/abilities_db.gd: AbilitiesDB — 3 активные способности (data_burst/compute_burst/energy_burst): name/desc/unlocked_by/duration/cooldown/effect (mult_production или energy_add)
 - scripts/data/anomalies_db.gd: AnomaliesDB — список определений аномалий (signal/glitch, эффекты, веса)
 - scripts/data/meta_db.gd: MetaDB — список мета-перков (4 узла: autoclick, mult_production, start_data, echo_gain_mult), каждый с `pos` для графа
@@ -67,7 +69,7 @@
 - scripts/systems/prestige.gd: Prestige — echo_gain/can_prestige/do_prestige (сброс забега + head start), is_owned/prereqs_met/can_buy/buy перков, get_production_mult/get_echo_gain_mult/autoclick_rate
 - scripts/systems/mining.gd: Mining — риги (rig_count/rig_cost/can_buy_rig/buy_rig), mine_mult (от апгрейдов разгона), crypto_rate/compute_crypto_rates/update (медленное накопление крипты каждый тик), апгрейды разгона (upg_owned/upg_can_buy/upg_buy, тратят крипту)
 - scripts/ui/format.gd: Format — форматирование чисел
-- scripts/ui/palette.gd: Palette — цветовые токены (+ ENERGY, COMPUTE, CORRUPT, SIGNAL, VOID)
+- scripts/ui/palette.gd: Palette — цветовые токены (+ ENERGY, COMPUTE, CORRUPT, SIGNAL, VOID, CRYPTO, ENERGY_BRANCH)
 - scripts/ui/theme_builder.gd: ThemeBuilder — Theme в коде
 - scripts/ui/panels/topbar.gd: TopBar — Данные/Вычисления (значение+скорость) + Энергия (выработка/потребление, питание %, бар) + `add_nav_button()` для квадратных кнопок-«экранов» в правом углу
 - scripts/ui/panels/terminal.gd: TerminalPanel — лог терминала
@@ -78,7 +80,7 @@
 - scripts/ui/panels/anomaly_banner.gd: AnomalyBanner — баннер активной аномалии (имя/эффект/обратный отсчёт), `SIZE_SHRINK_CENTER` в центральной колонке
 - scripts/ui/panels/prestige.gd: PrestigePanel — старая списочная панель «Временная линия», больше не подключена (заменена PrestigeScreen), оставлена неиспользуемой
 - scripts/ui/screens/tree_graph.gd: TreeGraph — переиспользуемый компонент графа (узлы/рёбра/пан/окно деталей/действие через адаптеры node_provider и action_handler)
-- scripts/ui/screens/research_tree.gd: ResearchTreeScreen — полноэкранный граф дерева исследований на TreeGraph (адаптеры _nodes/_do_action), шапка с кнопкой «← НАЗАД» и счётчиком Вычислений
+- scripts/ui/screens/research_tree.gd: ResearchTreeScreen — полноэкранный граф дерева исследований на TreeGraph (адаптеры _nodes/_do_action), шапка с кнопкой «← НАЗАД» и счётчиком Вычислений; `_effect_text` помечает дебафы, и для узлов-анлоков добавляет «Открывает: <способность>» (AbilitiesDB) и/или «Открывает постройку: <здание>» (BuildingsDB.requires_research)
 - scripts/ui/screens/prestige_screen.gd: PrestigeScreen — полноэкранный граф мета-дерева на TreeGraph, шапка с балансом эхо, «получишь сейчас» и двухшаговым сворачиванием временной линии
 - scripts/ui/screens/mining_screen.gd: MiningScreen — полноэкранный список-экран «КРИПТО-ФЕРМА»: балансы крипты (баланс+/сек), риги (имя/×N/описание/цена в Данных/кнопка «Собрать»), разгон (апгрейды владение/доступность/требования/кнопка «Активировать»); шапка «← НАЗАД»
 - scripts/ui/panels/crypto_tracker.gd: CryptoTracker — фиксированная левая панель (~240px, всегда развёрнута), показывает баланс и /сек по каждой крипте из CryptoDB + кнопка «⛏ КРИПТО-ФЕРМА» (сигнал `mining_pressed`)
@@ -93,8 +95,8 @@
 - GameState.resources — следующие слои добавят новые накапливаемые ресурсы по аналогии с "data"/"compute".
 - AnomaliesDB.get_list() — новые типы аномалий, в т.ч. интерактивные «поймай сигнал» (L6).
 - MetaDB.get_list() — новые мета-перки, разблокировки веток/ресурсов и сквозное Осознание архива (L5/L8), сид-модификаторы таймлайнов (L9).
-- CryptoDB.get_list() / MiningDB — ещё 4 крипто-вида и соответствующие риги/апгрейды разгона (контент); трата крипты на продвинутые структуры всех веток (частично уже реализована для data_cluster, дальше — контент).
-- BuildingsDB.get_list() / requires_research — элитные структуры по веткам + энерго-ветка (→ L9); ResearchDB excludes — наполнение узлов с развилками и крипто-ценами (→ L10–12).
+- CryptoDB.get_list() / MiningDB — ещё 4 крипто-вида и соответствующие риги/апгрейды разгона (контент).
+- ResearchDB.get_list() — полное наполнение веток (+20 узлов: дальнейший контент Пути Энергии после `en_singularity`, развилки в Машинах/Сознании по аналогии с энерго-веткой) (→ L11–12).
 - AbilitiesDB.get_list() — новые активные способности: запись в AbilitiesDB + узел-анлок (unlocked_by) в любой ветке исследований.
 - Новые машины/категории — просто появятся в ростере (MachineRoster) и вкладках покупки (BuildingsPanel) через `BuildingsDB.get_list()` (`category`/`icon`/`icon_color`), без изменений в main.gd.
 
