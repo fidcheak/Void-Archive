@@ -30,18 +30,32 @@ static func click_power() -> float:
 		prod += float(GameState.production_rates[res])
 	return (BASE_CLICK + CLICK_FRACTION * prod) * _level_bonus() * Prestige.click_mult() * combo_mult()
 
-static func do_click() -> void:
-	GameState.add_resource("data", click_power())
+static func do_click() -> float:
+	var amt := click_power()
+	GameState.add_resource("data", amt)
 	GameState.combo_stacks = minf(COMBO_MAX_STACKS, GameState.combo_stacks + 1.0)
 	GameState.combo_timer = COMBO_WINDOW
+	return amt
 
 static func autoclick_rate() -> float:
 	return float(GameState.autoclick_level) * AC_RATE
 
+static var _vis_accum := 0.0
+static var _vis_time := 0.0
+const VIS_INTERVAL := 0.15
+
 static func update(delta: float) -> void:
 	var ac := autoclick_rate()
 	if ac > 0.0:
-		GameState.add_resource("data", base_click_power() * ac * delta)
+		var gain := base_click_power() * ac * delta
+		GameState.add_resource("data", gain)
+		_vis_accum += gain
+	_vis_time += delta
+	if _vis_time >= VIS_INTERVAL:
+		if _vis_accum > 0.0 and ac > 0.0:
+			Events.click_performed.emit(_vis_accum, true)
+		_vis_accum = 0.0
+		_vis_time = 0.0
 	if GameState.combo_timer > 0.0:
 		GameState.combo_timer -= delta
 	elif GameState.combo_stacks > 0.0:

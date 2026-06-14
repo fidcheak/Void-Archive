@@ -9,6 +9,7 @@ var _ops_screen: Control
 var _tree_screen: ResearchTreeScreen
 var _prestige_screen: PrestigeScreen
 var _mining_screen: MiningScreen
+var _floating: FloatingText
 
 func _ready() -> void:
 	theme = ThemeBuilder.build()
@@ -102,9 +103,15 @@ func _ready() -> void:
 	_mining_screen.back_pressed.connect(_on_mining_back_pressed)
 	add_child(_mining_screen)
 
+	_floating = FloatingText.new()
+	_floating.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_floating.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_floating)
+
 	_build_crt_overlay()
 
 	Events.tick.connect(_on_tick)
+	Events.click_performed.connect(_on_click_performed)
 
 	SaveManager.load_game()
 
@@ -172,13 +179,22 @@ func _build_crt_overlay() -> void:
 	layer.add_child(overlay)
 	_crt_material = mat
 
+func _core_global_center() -> Vector2:
+	return _core_rect.get_global_rect().get_center()
+
+func _on_click_performed(amount: float, is_auto: bool) -> void:
+	if is_auto:
+		var c := _core_global_center() + Vector2(randf_range(-20.0, 20.0), randf_range(-10.0, 10.0))
+		_floating.spawn("+" + Format.num(amount), c)
+
 func _on_core_pressed() -> void:
-	var amount := Clicker.click_power()
-	Clicker.do_click()
+	var amt := Clicker.do_click()
 	GameState.meta["total_clicks"] = int(GameState.meta.get("total_clicks", 0)) + 1
-	Events.data_gained.emit(amount)
+	Events.data_gained.emit(amt)
 	if int(GameState.meta["total_clicks"]) % 10 == 0:
 		Events.log_message.emit("> ФРАГМЕНТ ИЗВЛЕЧЁН [%d]" % int(GameState.meta["total_clicks"]), "sys")
+
+	_floating.spawn("+" + Format.num(amt), get_global_mouse_position())
 
 	var tw := create_tween()
 	tw.tween_property(_core_rect, "scale", Vector2(1.06, 1.06), 0.06).set_trans(Tween.TRANS_SINE)
