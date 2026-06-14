@@ -1,5 +1,5 @@
 # PROJECT STATE — Архив Пустоты
-Последний слой: L9(UI-1)
+Последний слой: L9(UI-2)
 Движок: Godot 4.x. Запуск: F5.
 
 ## Что уже работает
@@ -44,7 +44,7 @@
 
 ## Файлы и их роль
 - scenes/main.tscn: единственная сцена — корневой Control + main.gd
-- scripts/main.gd: собирает UI-дерево в коде — `_ops_screen` (VBoxContainer: TopBar с квадратными кнопками «⌬»/«⟲» / CorruptionBar на всю ширину / средняя строка HBoxContainer: CryptoTracker слева (фикс. 240px) | центральная колонка (AnomalyBanner / ядро в CenterContainer / AbilityBar) | BuildArea справа (фикс. 460px, BuildingsPanel) / терминал фикс. высоты 180px), `_tree_screen` (ResearchTreeScreen), `_prestige_screen` (PrestigeScreen), `_mining_screen` (MiningScreen) — переключение через visible; CRT-оверлей (пост-процесс, кормит corruption каждый тик, поверх всех экранов), обработка клика по ядру, дебаг-сброс
+- scripts/main.gd: собирает UI-дерево в коде — `_ops_screen` (VBoxContainer: TopBar с квадратными кнопками «⌬»/«⟲» / CorruptionBar на всю ширину / средняя строка HBoxContainer: CryptoTracker слева (фикс. 240px) | центральная колонка (AnomalyBanner / ядро в CenterContainer / AbilityBar) | BuildArea справа (фикс. 460px, HBoxContainer: MachineRoster + BuildingsPanel) / терминал фикс. высоты 180px) + оверлей окна деталей ростера (`MachineRoster.detail_overlay`, поверх ops-экрана), `_tree_screen` (ResearchTreeScreen), `_prestige_screen` (PrestigeScreen), `_mining_screen` (MiningScreen) — переключение через visible; CRT-оверлей (пост-процесс, кормит corruption каждый тик, поверх всех экранов), обработка клика по ядру, дебаг-сброс
 - scripts/core/game_state.gd: autoload GameState — resources (data/compute/hsh/ent)/buildings/meta/research/corruption/flags + мета (chrono_echo/meta_upgrades/prestige_count) + трекинг забега (run_best_data/run_peak_corruption) + крипто-ферма (crypto_rigs/mining_upgrades) + транзиентные active_anomaly/anomaly_cooldown/active_abilities/ability_cooldowns + производные поля энергосети и production_rates; `_init()` сидирует нулевые балансы для всех CryptoDB.ids()
 - scripts/core/events.gd: autoload Events — шина сигналов (+ building_purchased, research_completed, anomaly_started, anomaly_ended, prestige_done, meta_upgrade_bought, crypto_rig_bought, mining_upgrade_bought, ability_activated)
 - scripts/core/game_loop.gd: autoload GameLoop — тик (Anomalies → Abilities → Production → Mining → Corruption → трекинг run_best_data/run_peak_corruption), автосейв
@@ -53,7 +53,7 @@
 - scripts/ui/labels.gd: Labels — единый helper переводов ресурсов (`res_name`/`res_short`), мердж ResourcesDB.get_defs() + CryptoDB.get_list()
 - scripts/data/crypto_db.gd: CryptoDB — список крипто-ресурсов (каркас на 6, сидировано 2: hsh, ent), get_def/ids
 - scripts/data/mining_db.gd: MiningDB — риги-майнеры (cost_base/cost_mult/cost_res/mines) и апгрейды разгона (requires/cost в крипте/mine_mult)
-- scripts/data/buildings_db.gd: BuildingsDB — определения "scanner", "reactor", "supercomputer", "data_cluster" (элитная, мульти-ресурсная цена `cost` словарь + `cost_mult`, заперта за `requires_research`)
+- scripts/data/buildings_db.gd: BuildingsDB — определения "scanner", "reactor", "supercomputer", "data_cluster" (элитная, мульти-ресурсная цена `cost` словарь + `cost_mult`, заперта за `requires_research`); у каждой — `category`/`icon`/`icon_color` для ростера и вкладок покупки
 - scripts/data/research_db.gd: ResearchDB — ветки (id/name/color/locked) + список узлов с `pos`: Путь Машин (4 узла, `m_auto_scan`/`m_data_compression` взаимно исключают друг друга через `excludes`), Путь Сознания (5 узлов, открыта с начала), Путь Пустоты (4 узла, корень `v_root` с `requires_flag: "void_detected"`; все 4 узла несут постоянные дебафы, три из них — анлоки активок через `AbilitiesDB.unlocked_by`)
 - scripts/data/abilities_db.gd: AbilitiesDB — 3 активные способности (data_burst/compute_burst/energy_burst): name/desc/unlocked_by/duration/cooldown/effect (mult_production или energy_add)
 - scripts/data/anomalies_db.gd: AnomaliesDB — список определений аномалий (signal/glitch, эффекты, веса)
@@ -71,7 +71,8 @@
 - scripts/ui/theme_builder.gd: ThemeBuilder — Theme в коде
 - scripts/ui/panels/topbar.gd: TopBar — Данные/Вычисления (значение+скорость) + Энергия (выработка/потребление, питание %, бар) + `add_nav_button()` для квадратных кнопок-«экранов» в правом углу
 - scripts/ui/panels/terminal.gd: TerminalPanel — лог терминала
-- scripts/ui/panels/buildings.gd: BuildingsPanel — список зданий, покупка, рефреш
+- scripts/ui/panels/buildings.gd: BuildingsPanel (`extends TabContainer`) — вкладки по `category` из BuildingsDB, в каждой — покупка машин этой категории (название, эффект за единицу, мульти-ресурсная цена через `Labels`, кнопка «Установить»; запертые приглушены); количества (×N) не показывает — они в MachineRoster
+- scripts/ui/panels/machine_roster.gd: MachineRoster — узкая колонка слева от BuildingsPanel (~110px), иконки (цветной квадрат + глиф из `icon`/`icon_color`) только купленных машин (`Buildings.count(id) > 0`) с бейджем «×N»; клик → `detail_overlay` (центрированное окно поверх ops-экрана) с описанием, количеством, производством/потреблением за единицу и итогами (×N), закрывается крестиком
 - scripts/ui/panels/research.gd: ResearchPanel — старая списочная панель исследований, больше не подключена (заменена ResearchTreeScreen), оставлена неиспользуемой
 - scripts/ui/panels/corruption_bar.gd: CorruptionBar — отдельная строка на всю ширину; бар «ЦЕЛОСТНОСТЬ АРХИВА» (ProgressBar с background/fill стилями, корректная заливка) + кнопка «Стабилизировать»
 - scripts/ui/panels/anomaly_banner.gd: AnomalyBanner — баннер активной аномалии (имя/эффект/обратный отсчёт), `SIZE_SHRINK_CENTER` в центральной колонке
@@ -95,7 +96,7 @@
 - CryptoDB.get_list() / MiningDB — ещё 4 крипто-вида и соответствующие риги/апгрейды разгона (контент); трата крипты на продвинутые структуры всех веток (частично уже реализована для data_cluster, дальше — контент).
 - BuildingsDB.get_list() / requires_research — элитные структуры по веткам + энерго-ветка (→ L9); ResearchDB excludes — наполнение узлов с развилками и крипто-ценами (→ L10–12).
 - AbilitiesDB.get_list() — новые активные способности: запись в AbilitiesDB + узел-анлок (unlocked_by) в любой ветке исследований.
-- BuildArea (правая колонка главного экрана, сейчас = BuildingsPanel как есть) — точка для «Часть 2»: ростер построек/вкладки заменят содержимое зоны без изменения остальной сетки.
+- Новые машины/категории — просто появятся в ростере (MachineRoster) и вкладках покупки (BuildingsPanel) через `BuildingsDB.get_list()` (`category`/`icon`/`icon_color`), без изменений в main.gd.
 
 ## Известные дыры/TODO
 - Нет.

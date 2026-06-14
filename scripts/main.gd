@@ -64,10 +64,17 @@ func _ready() -> void:
 	var ability_bar := AbilityBar.new()
 	center_col.add_child(ability_bar)
 
-	var build_area := BuildingsPanel.new()
+	var build_area := HBoxContainer.new()
 	build_area.custom_minimum_size = Vector2(460, 0)
 	build_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	middle.add_child(build_area)
+
+	var machine_roster := MachineRoster.new()
+	build_area.add_child(machine_roster)
+	_ops_screen.add_child(machine_roster.detail_overlay)
+
+	var buildings_panel := BuildingsPanel.new()
+	build_area.add_child(buildings_panel)
 
 	var terminal := TerminalPanel.new()
 	terminal.custom_minimum_size = Vector2(0, TERMINAL_HEIGHT)

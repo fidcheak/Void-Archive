@@ -1,18 +1,37 @@
 class_name BuildingsPanel
-extends PanelContainer
+extends TabContainer
 
-var _rows := {}  # id -> { "name": Label, "owned": Label, "effect": Label, "cost": Label, "button": Button }
+var _rows := {}  # id -> { "name": Label, "effect": Label, "cost": Label, "button": Button }
 var _power_warned := false
 
 func _ready() -> void:
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 
+	var categories := PackedStringArray()
+	var by_category := {}
+	for b in BuildingsDB.get_list():
+		var cat := String(b.get("category", "Прочее"))
+		if not by_category.has(cat):
+			by_category[cat] = []
+			categories.append(cat)
+		by_category[cat].append(b)
+
+	for cat in categories:
+		add_child(_build_tab(cat, by_category[cat]))
+
+	Events.tick.connect(_on_tick)
+	Events.building_purchased.connect(_on_building_purchased)
+	Events.research_completed.connect(_on_research_completed)
+	Events.resource_changed.connect(_on_resource_changed)
+
+	_refresh()
+
+func _build_tab(cat: String, items: Array) -> Control:
 	var scroll := ScrollContainer.new()
-	scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scroll.name = cat
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	add_child(scroll)
 
 	var margin := MarginContainer.new()
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -25,14 +44,10 @@ func _ready() -> void:
 	list.add_theme_constant_override("separation", 10)
 	margin.add_child(list)
 
-	for b in BuildingsDB.get_list():
+	for b in items:
 		list.add_child(_build_row(b))
 
-	Events.tick.connect(_on_tick)
-	Events.building_purchased.connect(_on_building_purchased)
-	Events.research_completed.connect(_on_research_completed)
-
-	_refresh()
+	return scroll
 
 func _build_row(b: Dictionary) -> Control:
 	var row := VBoxContainer.new()
@@ -41,20 +56,12 @@ func _build_row(b: Dictionary) -> Control:
 	var sep := HSeparator.new()
 	row.add_child(sep)
 
-	var header := HBoxContainer.new()
-	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(header)
-
 	var name_label := Label.new()
 	name_label.text = b["name"]
 	name_label.add_theme_color_override("font_color", Palette.AMBER)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	header.add_child(name_label)
-
-	var owned_label := Label.new()
-	owned_label.text = "×%d" % Buildings.count(b["id"])
-	header.add_child(owned_label)
+	row.add_child(name_label)
 
 	var effect_label := Label.new()
 	effect_label.add_theme_color_override("font_color", Palette.TEXT_2)
@@ -77,7 +84,6 @@ func _build_row(b: Dictionary) -> Control:
 
 	_rows[b["id"]] = {
 		"name": name_label,
-		"owned": owned_label,
 		"effect": effect_label,
 		"cost": cost_label,
 		"button": buy_button,
@@ -115,6 +121,9 @@ func _on_building_purchased(_id: String, _count: int) -> void:
 func _on_research_completed(_id: String) -> void:
 	_refresh()
 
+func _on_resource_changed(_id: String, _value: float) -> void:
+	_refresh()
+
 func _on_tick(_delta: float) -> void:
 	_refresh()
 	if GameState.power_ratio < 1.0 and not _power_warned:
@@ -127,7 +136,6 @@ func _refresh() -> void:
 	for id in _rows.keys():
 		var row: Dictionary = _rows[id]
 		var def := Buildings.get_def(id)
-		row["owned"].text = "×%d" % Buildings.count(id)
 
 		if Buildings.is_unlocked(id):
 			row["name"].modulate.a = 1.0
