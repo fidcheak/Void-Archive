@@ -16,12 +16,12 @@ func _ready() -> void:
 	var margin := MarginContainer.new()
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_%s" % side, 14)
+		margin.add_theme_constant_override("margin_%s" % side, 8)
 	scroll.add_child(margin)
 
 	var list := VBoxContainer.new()
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 10)
+	list.add_theme_constant_override("separation", 6)
 	margin.add_child(list)
 
 	for branch in ResearchDB.get_branches():

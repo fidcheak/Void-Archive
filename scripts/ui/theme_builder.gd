@@ -8,7 +8,7 @@ static func mono_font() -> SystemFont:
 static func build() -> Theme:
 	var t := Theme.new()
 	t.default_font = mono_font()
-	t.default_font_size = 16
+	t.default_font_size = 13
 	t.set_color("font_color", "Label", Palette.TEXT)
 
 	var panel := StyleBoxFlat.new()
@@ -91,7 +91,7 @@ static func _build_tab_styles(t: Theme) -> void:
 	t.set_stylebox("tab_hovered", "TabContainer", tab_hovered)
 	t.set_color("font_selected_color", "TabContainer", Palette.AMBER)
 	t.set_color("font_unselected_color", "TabContainer", Palette.TEXT_2)
-	t.set_font_size("font_size", "TabContainer", 14)
+	t.set_font_size("font_size", "TabContainer", 12)
 
 	var body := StyleBoxFlat.new()
 	body.bg_color = Palette.SURFACE
@@ -110,5 +110,5 @@ static func _build_separator_style(t: Theme) -> void:
 	t.set_stylebox("separator", "HSeparator", sep)
 
 static func _build_container_constants(t: Theme) -> void:
-	t.set_constant("separation", "VBoxContainer", 10)
-	t.set_constant("separation", "HBoxContainer", 8)
+	t.set_constant("separation", "VBoxContainer", 8)
+	t.set_constant("separation", "HBoxContainer", 6)

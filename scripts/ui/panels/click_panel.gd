@@ -13,7 +13,7 @@ func _ready() -> void:
 
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_%s" % side, 10)
+		margin.add_theme_constant_override("margin_%s" % side, 8)
 	add_child(margin)
 
 	var box := VBoxContainer.new()
@@ -37,7 +37,7 @@ func _ready() -> void:
 
 	var buttons := HBoxContainer.new()
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
-	buttons.add_theme_constant_override("separation", 10)
+	buttons.add_theme_constant_override("separation", 6)
 	box.add_child(buttons)
 
 	_cp_button = Button.new()
@@ -81,7 +81,7 @@ func _refresh() -> void:
 	else:
 		_combo_label.visible = false
 
-	_autoclick_label.text = "Автокликер ур. %d — %s/сек" % [GameState.autoclick_level, Format.num(Clicker.autoclick_rate())]
+	_autoclick_label.text = "Автокликер ур. %d: %s/клик → +%s/сек" % [GameState.autoclick_level, Format.num(Clicker.autoclick_power()), Format.num(Clicker.autoclick_income())]
 
 	_cp_button.text = "Усилить клик (%s ДАН)" % Format.num(Clicker.click_power_cost())
 	_cp_button.disabled = not Clicker.can_upgrade_click_power()

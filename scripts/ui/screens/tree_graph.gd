@@ -201,7 +201,7 @@ func _build_detail_panel() -> PanelContainer:
 
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_%s" % side, 14)
+		margin.add_theme_constant_override("margin_%s" % side, 8)
 	panel.add_child(margin)
 
 	var box := VBoxContainer.new()

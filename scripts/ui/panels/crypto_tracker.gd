@@ -12,11 +12,11 @@ func _ready() -> void:
 
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_%s" % side, 12)
+		margin.add_theme_constant_override("margin_%s" % side, 8)
 	add_child(margin)
 
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
+	box.add_theme_constant_override("separation", 6)
 	margin.add_child(box)
 
 	var header := Label.new()

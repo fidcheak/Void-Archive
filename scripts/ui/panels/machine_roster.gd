@@ -37,7 +37,7 @@ func _ready() -> void:
 	_list = VBoxContainer.new()
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_list.alignment = BoxContainer.ALIGNMENT_BEGIN
-	_list.add_theme_constant_override("separation", 12)
+	_list.add_theme_constant_override("separation", 8)
 	margin.add_child(_list)
 
 	for b in BuildingsDB.get_list():
@@ -99,7 +99,7 @@ func _build_detail_overlay() -> void:
 
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_%s" % side, 14)
+		margin.add_theme_constant_override("margin_%s" % side, 8)
 	_detail_panel.add_child(margin)
 
 	var box := VBoxContainer.new()

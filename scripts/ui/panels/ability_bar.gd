@@ -9,7 +9,7 @@ func _ready() -> void:
 
 	var box := HBoxContainer.new()
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_theme_constant_override("separation", 10)
+	box.add_theme_constant_override("separation", 6)
 	add_child(box)
 
 	for a in AbilitiesDB.get_list():

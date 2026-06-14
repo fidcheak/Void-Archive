@@ -62,12 +62,12 @@ func _ready() -> void:
 	center_col.add_child(center)
 	center.add_child(_build_core())
 
+	var ability_bar := AbilityBar.new()
+	center_col.add_child(ability_bar)
+
 	var click_panel := ClickPanel.new()
 	click_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	center_col.add_child(click_panel)
-
-	var ability_bar := AbilityBar.new()
-	center_col.add_child(ability_bar)
 
 	var build_area := HBoxContainer.new()
 	build_area.custom_minimum_size = Vector2(460, 0)

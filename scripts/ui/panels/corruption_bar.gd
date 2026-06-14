@@ -1,7 +1,7 @@
 class_name CorruptionBar
 extends PanelContainer
 
-const BAR_HEIGHT := 18.0
+const BAR_HEIGHT := 14.0
 
 var _label: Label
 var _pct_label: Label
@@ -15,11 +15,11 @@ func _ready() -> void:
 
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_%s" % side, 10)
+		margin.add_theme_constant_override("margin_%s" % side, 6)
 	add_child(margin)
 
 	var box := HBoxContainer.new()
-	box.add_theme_constant_override("separation", 10)
+	box.add_theme_constant_override("separation", 6)
 	margin.add_child(box)
 
 	_label = Label.new()

@@ -14,14 +14,14 @@ var _box: HBoxContainer
 var _acc := 0.0
 
 const BAR_WIDTH := 80.0
-const BAR_HEIGHT := 12.0
-const GROUP_SEPARATION := 28
-const NAV_BUTTON_SIZE := 48.0
+const BAR_HEIGHT := 10.0
+const GROUP_SEPARATION := 20
+const NAV_BUTTON_SIZE := 34.0
 
 func _ready() -> void:
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_%s" % side, 10)
+		margin.add_theme_constant_override("margin_%s" % side, 6)
 	add_child(margin)
 
 	_box = HBoxContainer.new()
