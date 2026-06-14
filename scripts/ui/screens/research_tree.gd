@@ -73,6 +73,7 @@ func _nodes() -> Array:
 		result.append({
 			"id": r["id"], "title": r["name"], "desc": String(r.get("desc", "")),
 			"pos": r["pos"], "color": branch_colors.get(r["branch"], Palette.TEXT_3),
+			"rarity": r.get("rarity", "common"),
 			"state": state,
 			"cost_text": _cost_text(r),
 			"effect_text": _effect_text(r),

@@ -106,7 +106,7 @@ func _ready() -> void:
 	_floating = FloatingText.new()
 	_floating.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_floating.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_floating)
+	_ops_screen.add_child(_floating)
 
 	_build_crt_overlay()
 
@@ -183,6 +183,8 @@ func _core_global_center() -> Vector2:
 	return _core_rect.get_global_rect().get_center()
 
 func _on_click_performed(amount: float, is_auto: bool) -> void:
+	if not _ops_screen.is_visible_in_tree():
+		return
 	if is_auto:
 		var c := _core_global_center() + Vector2(randf_range(-20.0, 20.0), randf_range(-10.0, 10.0))
 		_floating.spawn("+" + Format.num(amount), c)

@@ -5,14 +5,22 @@ enum NodeState { OWNED, AVAILABLE, LOCKED }
 
 const NODE_SIZE := 56.0
 const DETAIL_WIDTH := 360.0
+const ZOOM_MIN := 0.3
+const ZOOM_MAX := 1.5
+const ZOOM_STEP := 1.1
 
 var node_provider: Callable     # () -> Array[узлов]
 var action_handler: Callable    # (id: String) -> bool
 
-var _content: TreeCanvas
+var pan_offset := Vector2.ZERO
+var zoom := 1.0
+
+var _content: Control
+var _edges_layer: EdgesLayer
 var _canvas_bg: Control
 var _detail: PanelContainer
 var _detail_title: Label
+var _detail_rarity: Label
 var _detail_desc: Label
 var _detail_effect: Label
 var _detail_cost: Label
@@ -27,12 +35,16 @@ var _selected_id := ""
 var _dragging := false
 var _initialized_pan := false
 
-class TreeCanvas extends Control:
-	var edges: Array = []  # Array of { "a": Vector2, "b": Vector2, "color": Color }
+class EdgesLayer extends Control:
+	var edges: Array = []  # Array of { "a": Vector2, "b": Vector2, "color": Color } — базовые координаты узлов
+	var pan_offset := Vector2.ZERO
+	var zoom := 1.0
 
 	func _draw() -> void:
 		for e in edges:
-			draw_polyline(_bezier(e["a"], e["b"]), e["color"], 3.0, true)
+			var a: Vector2 = e["a"] * zoom + pan_offset
+			var b: Vector2 = e["b"] * zoom + pan_offset
+			draw_polyline(_bezier(a, b), e["color"], maxf(1.0, 3.0 * zoom), true)
 
 	func _bezier(a: Vector2, b: Vector2) -> PackedVector2Array:
 		var c1 := a + Vector2(0, (b.y - a.y) * 0.5)
@@ -62,7 +74,13 @@ func _ready() -> void:
 	_canvas_bg.resized.connect(_on_canvas_resized)
 	viewport.add_child(_canvas_bg)
 
-	_content = TreeCanvas.new()
+	_edges_layer = EdgesLayer.new()
+	_edges_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_edges_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_edges_layer.clip_contents = false
+	_canvas_bg.add_child(_edges_layer)
+
+	_content = Control.new()
 	_canvas_bg.add_child(_content)
 
 	_detail = _build_detail_panel()
@@ -88,35 +106,56 @@ func refresh() -> void:
 		_apply_node_style(n)
 
 	_rebuild_edges(nodes)
+	_reposition_nodes()
 
 	if _detail.visible and _nodes_by_id.has(_selected_id):
 		_update_detail(_nodes_by_id[_selected_id])
 
 func _create_node(n: Dictionary) -> void:
-	var pos: Vector2 = n["pos"]
-
 	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(NODE_SIZE, NODE_SIZE)
-	btn.size = Vector2(NODE_SIZE, NODE_SIZE)
-	btn.position = pos - Vector2(NODE_SIZE, NODE_SIZE) / 2.0
 	btn.clip_text = true
 	btn.pressed.connect(_on_node_pressed.bind(n["id"]))
 	_content.add_child(btn)
 	_node_buttons[n["id"]] = btn
 
 	var label := Label.new()
-	label.position = pos + Vector2(-60, NODE_SIZE / 2.0 + 4)
-	label.size = Vector2(120, 40)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.add_theme_font_size_override("font_size", 12)
 	_content.add_child(label)
 	_node_labels[n["id"]] = label
 
+func _node_screen_pos(base: Vector2) -> Vector2:
+	return base * zoom + pan_offset
+
+func _reposition_nodes() -> void:
+	for id in _nodes_by_id:
+		var n: Dictionary = _nodes_by_id[id]
+		var screen := _node_screen_pos(n["pos"])
+		var size := NODE_SIZE * zoom
+
+		var btn: Button = _node_buttons[id]
+		btn.size = Vector2(size, size)
+		btn.position = screen - Vector2(size, size) / 2.0
+
+		var label: Label = _node_labels[id]
+		label.size = Vector2(120, 40) * zoom
+		label.position = screen + Vector2(-60 * zoom, size / 2.0 + 4 * zoom)
+
+func _apply_transform() -> void:
+	_edges_layer.pan_offset = pan_offset
+	_edges_layer.zoom = zoom
+	_edges_layer.queue_redraw()
+	_reposition_nodes()
+
+const RARITY_NAMES := { "common": "Обычная", "rare": "Редкая", "legendary": "Легендарная" }
+const RARITY_COLORS := { "common": Palette.TEXT_3, "rare": Palette.ENERGY, "legendary": Palette.AMBER }
+
 func _apply_node_style(n: Dictionary) -> void:
 	var btn: Button = _node_buttons[n["id"]]
 	var label: Label = _node_labels[n["id"]]
 	var color: Color = n["color"]
+	var rarity := String(n.get("rarity", "common"))
 
 	var sb := StyleBoxFlat.new()
 	sb.set_corner_radius_all(int(NODE_SIZE / 2.0))
@@ -142,6 +181,18 @@ func _apply_node_style(n: Dictionary) -> void:
 			btn.modulate.a = 0.5
 			label.add_theme_color_override("font_color", Palette.TEXT_3)
 
+	# редкость — дополнительная рамка/свечение поверх стиля состояния
+	if int(n["state"]) != NodeState.LOCKED:
+		match rarity:
+			"rare":
+				sb.set_border_width_all(4)
+				sb.border_color = RARITY_COLORS["rare"]
+			"legendary":
+				sb.set_border_width_all(5)
+				sb.border_color = RARITY_COLORS["legendary"]
+				sb.shadow_color = Color(RARITY_COLORS["legendary"], 0.6)
+				sb.shadow_size = 6
+
 	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
 		btn.add_theme_stylebox_override(state, sb)
 
@@ -159,8 +210,10 @@ func _rebuild_edges(nodes: Array) -> void:
 				var alpha := 0.9 if int(n["state"]) == NodeState.OWNED else 0.35
 				edges.append({ "a": by_id[p]["pos"], "b": n["pos"], "color": Color(n["color"], alpha) })
 
-	_content.edges = edges
-	_content.queue_redraw()
+	_edges_layer.edges = edges
+	_edges_layer.pan_offset = pan_offset
+	_edges_layer.zoom = zoom
+	_edges_layer.queue_redraw()
 
 func _on_canvas_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
@@ -169,13 +222,21 @@ func _on_canvas_input(event: InputEvent) -> void:
 			_detail.visible = false
 			_selected_id = ""
 	elif event is InputEventMouseMotion and _dragging:
-		_content.position += event.relative
+		pan_offset += event.relative
+		_apply_transform()
+	elif event is InputEventMouseButton and event.pressed and (event.button_index == MOUSE_BUTTON_WHEEL_UP or event.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+		var old_zoom := zoom
+		zoom = clampf(zoom * (ZOOM_STEP if event.button_index == MOUSE_BUTTON_WHEEL_UP else 1.0 / ZOOM_STEP), ZOOM_MIN, ZOOM_MAX)
+		var m := _canvas_bg.get_local_mouse_position()
+		pan_offset = m - (m - pan_offset) * (zoom / old_zoom)
+		_apply_transform()
 
 func _on_canvas_resized() -> void:
 	if _initialized_pan:
 		return
 	_initialized_pan = true
-	_content.position = _canvas_bg.size / 2.0 + Vector2(0, _canvas_bg.size.y * 0.3)
+	pan_offset = _canvas_bg.size / 2.0 + Vector2(0, _canvas_bg.size.y * 0.3)
+	_apply_transform()
 
 func _on_node_pressed(id: String) -> void:
 	if not _nodes_by_id.has(id):
@@ -223,6 +284,10 @@ func _build_detail_panel() -> PanelContainer:
 
 	box.add_child(HSeparator.new())
 
+	_detail_rarity = Label.new()
+	_detail_rarity.add_theme_font_size_override("font_size", 12)
+	box.add_child(_detail_rarity)
+
 	_detail_desc = Label.new()
 	_detail_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail_desc.add_theme_color_override("font_color", Palette.TEXT_2)
@@ -255,6 +320,10 @@ func _update_detail(n: Dictionary) -> void:
 	var color: Color = n["color"]
 	_detail_title.text = String(n["title"])
 	_detail_title.add_theme_color_override("font_color", color)
+
+	var rarity := String(n.get("rarity", "common"))
+	_detail_rarity.text = "Редкость: %s" % String(RARITY_NAMES.get(rarity, "Обычная"))
+	_detail_rarity.add_theme_color_override("font_color", RARITY_COLORS.get(rarity, Palette.TEXT_3))
 
 	_detail_desc.text = String(n.get("desc", ""))
 	_detail_effect.text = "Эффект: %s" % String(n.get("effect_text", "—"))
