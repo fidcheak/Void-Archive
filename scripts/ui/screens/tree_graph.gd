@@ -3,11 +3,13 @@ extends Control
 
 enum NodeState { OWNED, AVAILABLE, LOCKED }
 
-const NODE_SIZE := 56.0
+const WIDGET_PAD := 14.0
 const DETAIL_WIDTH := 360.0
 const ZOOM_MIN := 0.3
 const ZOOM_MAX := 1.5
 const ZOOM_STEP := 1.1
+const FILL_ANIM_TIME := 0.4
+const GRID_STEP := 64.0
 
 var node_provider: Callable     # () -> Array[узлов]
 var action_handler: Callable    # (id: String) -> bool
@@ -19,6 +21,7 @@ var _content: Control
 var _edges_layer: EdgesLayer
 var _canvas_bg: Control
 var _detail: PanelContainer
+var _detail_style: StyleBoxFlat
 var _detail_title: Label
 var _detail_rarity: Label
 var _detail_desc: Label
@@ -28,12 +31,112 @@ var _detail_req: Label
 var _detail_state: Label
 var _detail_action: Button
 
-var _node_buttons := {}   # id -> Button
-var _node_labels := {}    # id -> Label
+var _node_widgets := {}   # id -> NodeWidget
+var _node_labels := {}    # id -> Label (название)
+var _node_sublabels := {} # id -> Label ("X/Y")
 var _nodes_by_id := {}     # id -> node dict
 var _selected_id := ""
 var _dragging := false
 var _initialized_pan := false
+
+# ---- кастомный узел-кружок: размер по редкости, заливка по уровню, кольцо/свечение редкости ----
+class NodeWidget extends Control:
+	signal pressed(id: String)
+
+	var id := ""
+	var branch_color: Color = Color.WHITE
+	var rarity := "common"
+	var state: int = TreeGraph.NodeState.LOCKED
+
+	var _anim_fill := 0.0
+	var _initialized := false
+
+	func radius() -> float:
+		match rarity:
+			"legendary": return 27.0
+			"rare": return 22.0
+			_: return 18.0
+
+	func set_data(n: Dictionary) -> void:
+		id = n["id"]
+		branch_color = n["color"]
+		rarity = String(n.get("rarity", "common"))
+		state = int(n["state"])
+
+		var r := radius()
+		var new_size := Vector2.ONE * (r + TreeGraph.WIDGET_PAD) * 2.0
+		if size != new_size:
+			size = new_size
+			pivot_offset = size / 2.0
+
+		var target := 0.0
+		if n.has("level"):
+			var max_lvl := maxi(int(n.get("max_level", 1)), 1)
+			target = float(int(n["level"])) / float(max_lvl)
+		elif state == TreeGraph.NodeState.OWNED:
+			target = 1.0
+
+		if not _initialized:
+			_anim_fill = target
+			_initialized = true
+		elif not is_equal_approx(target, _anim_fill):
+			var t := create_tween()
+			t.tween_method(_set_anim_fill, _anim_fill, target, TreeGraph.FILL_ANIM_TIME) \
+				.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+		queue_redraw()
+
+	func _set_anim_fill(v: float) -> void:
+		_anim_fill = v
+		queue_redraw()
+
+	func _draw() -> void:
+		var c := size / 2.0
+		var r := radius()
+		var dim := state == TreeGraph.NodeState.LOCKED
+
+		# 1) свечение редкости (за кругом)
+		if rarity == "legendary":
+			draw_circle(c, r + 9.0, Color(Palette.RARITY_LEGENDARY, 0.12 if not dim else 0.04))
+			draw_circle(c, r + 4.0, Color(Palette.RARITY_LEGENDARY, 0.18 if not dim else 0.06))
+		elif rarity == "rare":
+			draw_circle(c, r + 5.0, Color(Palette.RARITY_RARE, 0.14 if not dim else 0.05))
+
+		# 2) тёмный «пустой» шар
+		draw_circle(c, r, Palette.NODE_BG)
+
+		# 3) жидкая заливка по уровню (снизу), обрезанная кругом
+		var frac := clampf(_anim_fill, 0.0, 1.0)
+		if frac > 0.0:
+			var fill_col := branch_color if not dim else Color(branch_color, 0.35)
+			var fill_h := frac * (2.0 * r)
+			var top_y := c.y + r - fill_h
+			var yy := int(ceil(top_y))
+			var bottom := int(c.y + r)
+			while yy < bottom:
+				var dy := float(yy) - c.y
+				var hw := sqrt(maxf(0.0, r * r - dy * dy))
+				draw_line(Vector2(c.x - hw, float(yy)), Vector2(c.x + hw, float(yy)), fill_col, 1.0)
+				yy += 1
+
+		# 4) кольцо редкости
+		var ring_col := branch_color
+		var ring_w := 2.0
+		match rarity:
+			"rare":
+				ring_col = Palette.RARITY_RARE
+				ring_w = 3.0
+			"legendary":
+				ring_col = Palette.RARITY_LEGENDARY
+				ring_w = 3.0
+		if dim:
+			ring_col = Color(ring_col, 0.4)
+		draw_arc(c, r, 0.0, TAU, 48, ring_col, ring_w, true)
+
+	func _gui_input(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			pressed.emit(id)
+			accept_event()
 
 class EdgesLayer extends Control:
 	var edges: Array = []  # Array of { "a": Vector2, "b": Vector2, "color": Color } — базовые координаты узлов
@@ -41,10 +144,31 @@ class EdgesLayer extends Control:
 	var zoom := 1.0
 
 	func _draw() -> void:
+		_draw_grid()
 		for e in edges:
 			var a: Vector2 = e["a"] * zoom + pan_offset
 			var b: Vector2 = e["b"] * zoom + pan_offset
-			draw_polyline(_bezier(a, b), e["color"], maxf(1.0, 3.0 * zoom), true)
+			var pts := _bezier(a, b)
+			var col: Color = e["color"]
+			# псевдо-glow под основной линией
+			draw_polyline(pts, Color(col.r, col.g, col.b, col.a * 0.25), maxf(2.0, 6.0 * zoom), true)
+			draw_polyline(pts, Color(col.r, col.g, col.b, col.a), maxf(1.0, 2.0 * zoom), true)
+
+	func _draw_grid() -> void:
+		var step := TreeGraph.GRID_STEP * zoom
+		if step < 8.0:
+			return
+		var col := Color(Palette.LINE, 0.25)
+		var start_x := fposmod(pan_offset.x, step)
+		var start_y := fposmod(pan_offset.y, step)
+		var x := start_x
+		while x < size.x:
+			draw_line(Vector2(x, 0.0), Vector2(x, size.y), col, 1.0)
+			x += step
+		var y := start_y
+		while y < size.y:
+			draw_line(Vector2(0.0, y), Vector2(size.x, y), col, 1.0)
+			y += step
 
 	func _bezier(a: Vector2, b: Vector2) -> PackedVector2Array:
 		var c1 := a + Vector2(0, (b.y - a.y) * 0.5)
@@ -68,6 +192,12 @@ func _ready() -> void:
 	viewport.clip_contents = true
 	root.add_child(viewport)
 
+	var bg := ColorRect.new()
+	bg.color = Palette.BG
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	viewport.add_child(bg)
+
 	_canvas_bg = Control.new()
 	_canvas_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_canvas_bg.gui_input.connect(_on_canvas_input)
@@ -89,8 +219,9 @@ func _ready() -> void:
 func build() -> void:
 	for c in _content.get_children():
 		c.queue_free()
-	_node_buttons.clear()
+	_node_widgets.clear()
 	_node_labels.clear()
+	_node_sublabels.clear()
 
 	var nodes: Array = node_provider.call()
 	for n in nodes:
@@ -112,18 +243,27 @@ func refresh() -> void:
 		_update_detail(_nodes_by_id[_selected_id])
 
 func _create_node(n: Dictionary) -> void:
-	var btn := Button.new()
-	btn.clip_text = true
-	btn.pressed.connect(_on_node_pressed.bind(n["id"]))
-	_content.add_child(btn)
-	_node_buttons[n["id"]] = btn
+	var widget := NodeWidget.new()
+	widget.mouse_filter = Control.MOUSE_FILTER_STOP
+	widget.pressed.connect(_on_node_pressed)
+	_content.add_child(widget)
+	_node_widgets[n["id"]] = widget
 
 	var label := Label.new()
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.add_theme_font_size_override("font_size", 12)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_content.add_child(label)
 	_node_labels[n["id"]] = label
+
+	var sub := Label.new()
+	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub.add_theme_font_size_override("font_size", 10)
+	sub.add_theme_color_override("font_color", Palette.TEXT_3)
+	sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_content.add_child(sub)
+	_node_sublabels[n["id"]] = sub
 
 func _node_screen_pos(base: Vector2) -> Vector2:
 	return base * zoom + pan_offset
@@ -132,15 +272,21 @@ func _reposition_nodes() -> void:
 	for id in _nodes_by_id:
 		var n: Dictionary = _nodes_by_id[id]
 		var screen := _node_screen_pos(n["pos"])
-		var size := NODE_SIZE * zoom
 
-		var btn: Button = _node_buttons[id]
-		btn.size = Vector2(size, size)
-		btn.position = screen - Vector2(size, size) / 2.0
+		var widget: NodeWidget = _node_widgets[id]
+		widget.pivot_offset = widget.size / 2.0
+		widget.position = screen - widget.size / 2.0
+		widget.scale = Vector2(zoom, zoom)
+
+		var r := widget.size.x / 2.0
 
 		var label: Label = _node_labels[id]
-		label.size = Vector2(120, 40) * zoom
-		label.position = screen + Vector2(-60 * zoom, size / 2.0 + 4 * zoom)
+		label.size = Vector2(120, 20) * zoom
+		label.position = screen + Vector2(-60 * zoom, r * zoom + 2 * zoom)
+
+		var sub: Label = _node_sublabels[id]
+		sub.size = Vector2(120, 16) * zoom
+		sub.position = screen + Vector2(-60 * zoom, r * zoom + 18 * zoom)
 
 func _apply_transform() -> void:
 	_edges_layer.pan_offset = pan_offset
@@ -149,63 +295,29 @@ func _apply_transform() -> void:
 	_reposition_nodes()
 
 const RARITY_NAMES := { "common": "Обычная", "rare": "Редкая", "legendary": "Легендарная" }
-const RARITY_COLORS := { "common": Palette.TEXT_3, "rare": Palette.ENERGY, "legendary": Palette.AMBER }
+const RARITY_COLORS := { "common": Palette.TEXT_3, "rare": Palette.RARITY_RARE, "legendary": Palette.RARITY_LEGENDARY }
 
 func _apply_node_style(n: Dictionary) -> void:
-	var btn: Button = _node_buttons[n["id"]]
+	var widget: NodeWidget = _node_widgets[n["id"]]
+	widget.set_data(n)
+
+	var state := int(n["state"])
 	var label: Label = _node_labels[n["id"]]
-	var color: Color = n["color"]
-	var rarity := String(n.get("rarity", "common"))
-
-	var sb := StyleBoxFlat.new()
-	sb.set_corner_radius_all(int(NODE_SIZE / 2.0))
-
-	match int(n["state"]):
+	label.text = String(n["title"])
+	match state:
 		NodeState.OWNED:
-			sb.bg_color = color
-			if n.has("level"):
-				var lvl := int(n["level"])
-				var max_lvl := int(n.get("max_level", 1))
-				btn.text = "%d/%d" % [lvl, max_lvl]
-				if lvl < max_lvl:
-					# в процессе — ещё доступны следующие ранги
-					sb.border_color = color.lightened(0.4)
-					sb.set_border_width_all(3)
-			else:
-				btn.text = "✓"
-			btn.modulate.a = 1.0
-			label.add_theme_color_override("font_color", color)
+			label.add_theme_color_override("font_color", n["color"])
 		NodeState.AVAILABLE:
-			sb.bg_color = Palette.SURFACE_2
-			sb.border_color = color
-			sb.set_border_width_all(3)
-			btn.text = ("%d/%d" % [int(n.get("level", 0)), int(n.get("max_level", 1))]) if n.has("level") else ""
-			btn.modulate.a = 1.0
 			label.add_theme_color_override("font_color", Palette.TEXT)
 		_:
-			sb.bg_color = Palette.SURFACE
-			sb.border_color = Palette.LINE
-			sb.set_border_width_all(2)
-			btn.text = ("0/%d" % int(n["max_level"])) if n.has("max_level") else ""
-			btn.modulate.a = 0.5
 			label.add_theme_color_override("font_color", Palette.TEXT_3)
 
-	# редкость — дополнительная рамка/свечение поверх стиля состояния
-	if int(n["state"]) != NodeState.LOCKED:
-		match rarity:
-			"rare":
-				sb.set_border_width_all(4)
-				sb.border_color = RARITY_COLORS["rare"]
-			"legendary":
-				sb.set_border_width_all(5)
-				sb.border_color = RARITY_COLORS["legendary"]
-				sb.shadow_color = Color(RARITY_COLORS["legendary"], 0.6)
-				sb.shadow_size = 6
-
-	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
-		btn.add_theme_stylebox_override(state, sb)
-
-	label.text = String(n["title"])
+	var sub: Label = _node_sublabels[n["id"]]
+	if n.has("level"):
+		sub.text = "%d/%d" % [int(n["level"]), int(n.get("max_level", 1))]
+		sub.visible = true
+	else:
+		sub.visible = false
 
 func _rebuild_edges(nodes: Array) -> void:
 	var by_id := {}
@@ -268,6 +380,13 @@ func _build_detail_panel() -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(DETAIL_WIDTH, 0)
 	panel.visible = false
+
+	_detail_style = StyleBoxFlat.new()
+	_detail_style.bg_color = Palette.SURFACE
+	_detail_style.border_color = Palette.LINE
+	_detail_style.set_border_width_all(2)
+	_detail_style.set_corner_radius_all(3)
+	panel.add_theme_stylebox_override("panel", _detail_style)
 
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
@@ -333,6 +452,7 @@ func _update_detail(n: Dictionary) -> void:
 	var rarity := String(n.get("rarity", "common"))
 	_detail_rarity.text = "Редкость: %s" % String(RARITY_NAMES.get(rarity, "Обычная"))
 	_detail_rarity.add_theme_color_override("font_color", RARITY_COLORS.get(rarity, Palette.TEXT_3))
+	_detail_style.border_color = RARITY_COLORS.get(rarity, Palette.LINE) if rarity != "common" else color
 
 	_detail_desc.text = String(n.get("desc", ""))
 	_detail_effect.text = "Эффект: %s" % String(n.get("effect_text", "—"))

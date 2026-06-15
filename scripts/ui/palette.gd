@@ -21,3 +21,6 @@ const CORRUPT := Color("c0432f")      # красный распада
 const SIGNAL := Color("5fe0a8")       # зелёный «хорошей» аномалии
 const CRYPTO := Color("c9a94f")       # тускло-золотой акцент крипто-секции
 const ENERGY_BRANCH := Color("7bd88f")   # зелёный — ветка энергии в дереве
+const RARITY_RARE := Color("5aa9ff")     # синее кольцо/свечение редких узлов дерева
+const RARITY_LEGENDARY := Color("ffcf4d") # золотое кольцо/свечение легендарных узлов дерева
+const NODE_BG := Color("0c0f14")         # тёмный «пустой» шар узла дерева
