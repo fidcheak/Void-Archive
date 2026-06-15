@@ -269,6 +269,9 @@ func _node_screen_pos(base: Vector2) -> Vector2:
 	return base * zoom + pan_offset
 
 func _reposition_nodes() -> void:
+	# при сильном отдалении подписи гасятся (виден только шарик), при приближении — проявляются
+	var label_alpha := clampf((zoom - 0.5) / 0.25, 0.0, 1.0)
+
 	for id in _nodes_by_id:
 		var n: Dictionary = _nodes_by_id[id]
 		var screen := _node_screen_pos(n["pos"])
@@ -280,13 +283,20 @@ func _reposition_nodes() -> void:
 
 		var r := widget.size.x / 2.0
 
+		# подписи масштабируются как единое целое с узлом (scale), а не только их bounding box
 		var label: Label = _node_labels[id]
-		label.size = Vector2(120, 20) * zoom
-		label.position = screen + Vector2(-60 * zoom, r * zoom + 2 * zoom)
+		label.size = Vector2(120, 20)
+		label.pivot_offset = Vector2(60, 0)
+		label.scale = Vector2(zoom, zoom)
+		label.position = Vector2(screen.x - 60.0, screen.y + r * zoom + 2.0 * zoom)
+		label.modulate.a = label_alpha
 
 		var sub: Label = _node_sublabels[id]
-		sub.size = Vector2(120, 16) * zoom
-		sub.position = screen + Vector2(-60 * zoom, r * zoom + 18 * zoom)
+		sub.size = Vector2(120, 16)
+		sub.pivot_offset = Vector2(60, 0)
+		sub.scale = Vector2(zoom, zoom)
+		sub.position = Vector2(screen.x - 60.0, screen.y + r * zoom + 18.0 * zoom)
+		sub.modulate.a = label_alpha
 
 func _apply_transform() -> void:
 	_edges_layer.pan_offset = pan_offset
