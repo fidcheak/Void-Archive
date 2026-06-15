@@ -32,6 +32,7 @@ func _ready() -> void:
 
 	var topbar := TopBar.new()
 	topbar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	topbar.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	layout.add_child(topbar)
 	topbar.add_nav_button("⌬", "Дерево исследований", _on_tree_button_pressed)
 	topbar.add_nav_button("⟲", "Временная линия", _on_prestige_button_pressed)
@@ -41,9 +42,17 @@ func _ready() -> void:
 	middle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	layout.add_child(middle)
 
+	# слот крипты всегда зарезервирован (300px) — даже когда крипта скрыта,
+	# чтобы её появление/исчезновение не двигало правую панель
+	var crypto_slot := Control.new()
+	crypto_slot.custom_minimum_size = Vector2(300, 0)
+	crypto_slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	middle.add_child(crypto_slot)
+
 	var crypto_tracker := CryptoTracker.new()
+	crypto_tracker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	crypto_tracker.mining_pressed.connect(_on_mining_button_pressed)
-	middle.add_child(crypto_tracker)
+	crypto_slot.add_child(crypto_tracker)
 
 	var center_col := VBoxContainer.new()
 	center_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -83,6 +92,7 @@ func _ready() -> void:
 
 	var terminal := TerminalPanel.new()
 	terminal.custom_minimum_size = Vector2(0, TERMINAL_HEIGHT)
+	terminal.size_flags_vertical = Control.SIZE_SHRINK_END
 	layout.add_child(terminal)
 
 	_tree_screen = ResearchTreeScreen.new()

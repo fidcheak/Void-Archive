@@ -52,7 +52,7 @@ func _ready() -> void:
 
 func _build_icon(b: Dictionary) -> Control:
 	var root := VBoxContainer.new()
-	root.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	root.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	root.alignment = BoxContainer.ALIGNMENT_CENTER
 
 	var btn := Button.new()

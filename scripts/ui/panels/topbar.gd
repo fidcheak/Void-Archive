@@ -7,9 +7,8 @@ var _compute_label: Label
 var _compute_rate_label: Label
 var _energy_label: Label
 var _power_label: Label
-var _power_bar: Panel
-var _power_bar_bg: Panel
-var _power_bar_style: StyleBoxFlat
+var _power_bar: ProgressBar
+var _power_bar_fill: StyleBoxFlat
 var _box: HBoxContainer
 var _acc := 0.0
 
@@ -99,16 +98,25 @@ func _build_energy_module() -> Control:
 	_power_label = Label.new()
 	body.add_child(_power_label)
 
-	_power_bar_bg = Panel.new()
-	_power_bar_bg.custom_minimum_size = Vector2(BAR_WIDTH, BAR_HEIGHT)
-	_power_bar_bg.add_theme_stylebox_override("panel", _bar_bg_style())
-	body.add_child(_power_bar_bg)
+	_power_bar = ProgressBar.new()
+	_power_bar.min_value = 0.0
+	_power_bar.max_value = 100.0
+	_power_bar.show_percentage = false
+	_power_bar.custom_minimum_size = Vector2(BAR_WIDTH, BAR_HEIGHT)
 
-	_power_bar = Panel.new()
-	_power_bar.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	_power_bar_style = _bar_fill_style(Palette.OK)
-	_power_bar.add_theme_stylebox_override("panel", _power_bar_style)
-	_power_bar_bg.add_child(_power_bar)
+	var bg_style := StyleBoxFlat.new()
+	bg_style.bg_color = Palette.BG_DEEP
+	bg_style.border_color = Palette.BORDER
+	bg_style.set_border_width_all(1)
+	bg_style.set_corner_radius_all(0)
+	_power_bar.add_theme_stylebox_override("background", bg_style)
+
+	_power_bar_fill = StyleBoxFlat.new()
+	_power_bar_fill.bg_color = Palette.OK
+	_power_bar_fill.set_corner_radius_all(0)
+	_power_bar.add_theme_stylebox_override("fill", _power_bar_fill)
+
+	body.add_child(_power_bar)
 
 	return m["panel"]
 
@@ -152,19 +160,5 @@ func _refresh_energy() -> void:
 	elif ratio < 1.0:
 		color = Palette.WARN
 	_power_label.add_theme_color_override("font_color", color)
-	_power_bar_style.bg_color = color
-	_power_bar.size = Vector2(BAR_WIDTH * clampf(ratio, 0.0, 1.0), BAR_HEIGHT)
-
-func _bar_bg_style() -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Palette.BG_DEEP
-	sb.border_color = Palette.BORDER
-	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(0)
-	return sb
-
-func _bar_fill_style(color: Color) -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = color
-	sb.set_corner_radius_all(0)
-	return sb
+	_power_bar_fill.bg_color = color
+	_power_bar.value = clampf(ratio, 0.0, 1.0) * 100.0

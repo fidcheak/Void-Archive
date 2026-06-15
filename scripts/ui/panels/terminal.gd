@@ -6,10 +6,14 @@ const MAX_LINES := 80
 var _log: RichTextLabel
 
 func _ready() -> void:
+	clip_contents = true
+
 	_log = RichTextLabel.new()
 	_log.bbcode_enabled = true
+	_log.scroll_active = true
 	_log.scroll_following = true
 	_log.fit_content = false
+	_log.clip_contents = true
 	_log.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_log.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	add_child(_log)
