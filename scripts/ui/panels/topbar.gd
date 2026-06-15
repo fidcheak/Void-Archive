@@ -1,5 +1,5 @@
 class_name TopBar
-extends PanelContainer
+extends MarginContainer
 
 var _value_label: Label
 var _rate_label: Label
@@ -19,19 +19,18 @@ const NAV_BUTTON_SIZE := 34.0
 const VALUE_FONT_SIZE := 20
 
 func _ready() -> void:
-	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_%s" % side, 6)
-	add_child(margin)
+		add_theme_constant_override("margin_%s" % side, 6)
 
 	_box = HBoxContainer.new()
 	_box.add_theme_constant_override("separation", GROUP_SEPARATION)
-	margin.add_child(_box)
+	add_child(_box)
 	var box := _box
 
 	box.add_child(_build_data_module())
 	box.add_child(_build_compute_module())
 	box.add_child(_build_energy_module())
+	box.add_child(_build_crypto_module())
 
 	var right_spacer := Control.new()
 	right_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -117,6 +116,15 @@ func _build_energy_module() -> Control:
 	_power_bar.add_theme_stylebox_override("fill", _power_bar_fill)
 
 	body.add_child(_power_bar)
+
+	return m["panel"]
+
+func _build_crypto_module() -> Control:
+	var m := ThemeBuilder.framed_module("Крипта")
+	var body := m["body"] as VBoxContainer
+
+	body.add_child(CryptoTracker.new())
+	body.add_child(_accent(Palette.CRYPTO))
 
 	return m["panel"]
 

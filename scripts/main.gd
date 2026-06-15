@@ -1,7 +1,7 @@
 extends Control
 
 const CORE_SIZE := 240.0
-const TERMINAL_HEIGHT := 180.0
+const TERMINAL_WIDTH := 280.0
 
 var _core_rect: ColorRect
 var _crt_material: ShaderMaterial
@@ -36,23 +36,18 @@ func _ready() -> void:
 	layout.add_child(topbar)
 	topbar.add_nav_button("⌬", "Дерево исследований", _on_tree_button_pressed)
 	topbar.add_nav_button("⟲", "Временная линия", _on_prestige_button_pressed)
+	topbar.add_nav_button("⛏", "Крипто-ферма", _on_mining_button_pressed)
 
 	var middle := HBoxContainer.new()
 	middle.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	middle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	layout.add_child(middle)
 
-	# слот крипты всегда зарезервирован (300px) — даже когда крипта скрыта,
-	# чтобы её появление/исчезновение не двигало правую панель
-	var crypto_slot := Control.new()
-	crypto_slot.custom_minimum_size = Vector2(300, 0)
-	crypto_slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	middle.add_child(crypto_slot)
-
-	var crypto_tracker := CryptoTracker.new()
-	crypto_tracker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	crypto_tracker.mining_pressed.connect(_on_mining_button_pressed)
-	crypto_slot.add_child(crypto_tracker)
+	var terminal := TerminalPanel.new()
+	terminal.custom_minimum_size = Vector2(TERMINAL_WIDTH, 0)
+	terminal.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	terminal.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	middle.add_child(terminal)
 
 	var center_col := VBoxContainer.new()
 	center_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -78,22 +73,18 @@ func _ready() -> void:
 	var corruption_bar := CorruptionBar.new()
 	center_col.add_child(corruption_bar)
 
-	var build_area := HBoxContainer.new()
-	build_area.custom_minimum_size = Vector2(620, 0)
-	build_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	middle.add_child(build_area)
+	var right_zone := HBoxContainer.new()
+	right_zone.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_zone.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	middle.add_child(right_zone)
 
 	var machine_roster := MachineRoster.new()
-	build_area.add_child(machine_roster)
+	machine_roster.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_zone.add_child(machine_roster)
 	_ops_screen.add_child(machine_roster.detail_overlay)
 
 	var buildings_panel := BuildingsPanel.new()
-	build_area.add_child(buildings_panel)
-
-	var terminal := TerminalPanel.new()
-	terminal.custom_minimum_size = Vector2(0, TERMINAL_HEIGHT)
-	terminal.size_flags_vertical = Control.SIZE_SHRINK_END
-	layout.add_child(terminal)
+	right_zone.add_child(buildings_panel)
 
 	_tree_screen = ResearchTreeScreen.new()
 	_tree_screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
