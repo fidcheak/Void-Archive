@@ -13,6 +13,7 @@ static func recompute() -> Dictionary:
 		e_prod += float(b.get("produces", {}).get("energy", 0.0)) * n
 		e_dem += float(b.get("consumes", {}).get("energy", 0.0)) * n
 	e_dem *= (1.0 + CORRUPT_ENERGY_K * GameState.corruption)
+	e_dem *= Research.get_energy_demand_mult()
 	var ratio := 1.0
 	if e_dem > 0.0:
 		ratio = clampf(e_prod / e_dem, 0.0, 1.0)

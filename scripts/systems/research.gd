@@ -6,6 +6,7 @@ static var _dirty := true
 static var _prod_mult: Dictionary = {}
 static var _building_mult: Dictionary = {}
 static var _base_energy_bonus := 0.0
+static var _energy_demand_mult := 1.0
 
 static func mark_dirty() -> void:
 	_dirty = true
@@ -18,7 +19,7 @@ static func level(id: String) -> int:
 
 static func max_level(id: String) -> int:
 	var eff: Dictionary = get_def(id).get("effects", {})
-	var has_scaling := eff.has("mult_production") or eff.has("mult_building") or eff.has("add_base_energy")
+	var has_scaling := eff.has("mult_production") or eff.has("mult_building") or eff.has("add_base_energy") or eff.has("mult_energy_demand")
 	if not has_scaling:
 		return 1   # анлок/флаг-узлы — один ранг
 	match String(get_def(id).get("rarity", "common")):
@@ -100,6 +101,7 @@ static func _rebuild_cache() -> void:
 	_prod_mult.clear()
 	_building_mult.clear()
 	_base_energy_bonus = 0.0
+	_energy_demand_mult = 1.0
 	for id in GameState.research:
 		var lvl := int(GameState.research[id])
 		if lvl <= 0: continue
@@ -109,6 +111,7 @@ static func _rebuild_cache() -> void:
 		for bid in eff.get("mult_building", {}):
 			_building_mult[bid] = float(_building_mult.get(bid, 1.0)) * pow(float(eff["mult_building"][bid]), lvl)
 		_base_energy_bonus += float(eff.get("add_base_energy", 0.0)) * lvl
+		_energy_demand_mult *= pow(float(eff.get("mult_energy_demand", 1.0)), lvl)
 	_dirty = false
 
 static func get_production_mult(resource: String) -> float:
@@ -122,3 +125,7 @@ static func get_building_mult(building_id: String) -> float:
 static func get_base_energy_bonus() -> float:
 	if _dirty: _rebuild_cache()
 	return _base_energy_bonus
+
+static func get_energy_demand_mult() -> float:
+	if _dirty: _rebuild_cache()
+	return _energy_demand_mult
