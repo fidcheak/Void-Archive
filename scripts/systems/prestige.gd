@@ -47,6 +47,14 @@ static func _reset_run() -> void:
 	GameState.run_peak_corruption = 0.0
 	Research.mark_dirty()
 
+	# сброс крипто-фермы (флаг crypto_unlocked и мета-прогресс не трогаем)
+	GameState.crypto_rigs = {}
+	GameState.mining_upgrades = {}
+	Mining.mining_ratio = 1.0
+	for c in CryptoDB.get_list():
+		GameState.resources[c["id"]] = 0.0
+		Events.resource_changed.emit(c["id"], 0.0)
+
 static func _apply_head_start() -> void:
 	for id in GameState.meta_upgrades:
 		var eff: Dictionary = MetaDB.get_def(id).get("effects", {})
