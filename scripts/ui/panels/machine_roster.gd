@@ -18,7 +18,7 @@ var _detail_consumes_total: Label
 var _detail_panel: PanelContainer
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(110, 0)
+	custom_minimum_size = Vector2(150, 0)
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 
 	var scroll := ScrollContainer.new()

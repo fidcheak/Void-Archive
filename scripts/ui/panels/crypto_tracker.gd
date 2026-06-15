@@ -8,7 +8,7 @@ var _acc := 0.0
 var _throttle_label: Label
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(240, 0)
+	custom_minimum_size = Vector2(300, 0)
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 
 	var margin := MarginContainer.new()

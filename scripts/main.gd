@@ -36,9 +36,6 @@ func _ready() -> void:
 	topbar.add_nav_button("⌬", "Дерево исследований", _on_tree_button_pressed)
 	topbar.add_nav_button("⟲", "Временная линия", _on_prestige_button_pressed)
 
-	var corruption_bar := CorruptionBar.new()
-	layout.add_child(corruption_bar)
-
 	var middle := HBoxContainer.new()
 	middle.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	middle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -69,8 +66,11 @@ func _ready() -> void:
 	click_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	center_col.add_child(click_panel)
 
+	var corruption_bar := CorruptionBar.new()
+	center_col.add_child(corruption_bar)
+
 	var build_area := HBoxContainer.new()
-	build_area.custom_minimum_size = Vector2(460, 0)
+	build_area.custom_minimum_size = Vector2(620, 0)
 	build_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	middle.add_child(build_area)
 

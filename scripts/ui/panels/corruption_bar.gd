@@ -35,13 +35,15 @@ func _ready() -> void:
 	_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var bg_style := StyleBoxFlat.new()
-	bg_style.bg_color = Palette.LINE
-	bg_style.set_corner_radius_all(int(BAR_HEIGHT / 2.0))
+	bg_style.bg_color = Palette.BG_DEEP
+	bg_style.border_color = Palette.BORDER
+	bg_style.set_border_width_all(1)
+	bg_style.set_corner_radius_all(0)
 	_bar.add_theme_stylebox_override("background", bg_style)
 
 	_fill_style = StyleBoxFlat.new()
 	_fill_style.bg_color = Palette.OK
-	_fill_style.set_corner_radius_all(int(BAR_HEIGHT / 2.0))
+	_fill_style.set_corner_radius_all(0)
 	_bar.add_theme_stylebox_override("fill", _fill_style)
 
 	box.add_child(_bar)
