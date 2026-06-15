@@ -58,6 +58,15 @@ func load_game() -> void:
 	if data.has("mining_upgrades"): GameState.mining_upgrades = data["mining_upgrades"]
 	if data.has("click_power_level"): GameState.click_power_level = int(data["click_power_level"])
 	if data.has("autoclick_level"): GameState.autoclick_level = int(data["autoclick_level"])
+	var has_crypto := false
+	for rig_id in GameState.crypto_rigs:
+		if int(GameState.crypto_rigs[rig_id]) > 0:
+			has_crypto = true
+	for c in CryptoDB.get_list():
+		if GameState.get_resource(c["id"]) > 0.0:
+			has_crypto = true
+	if has_crypto:
+		GameState.flags["crypto_unlocked"] = true
 	Research.mark_dirty()
 	Prestige.mark_dirty()
 	Abilities.mark_dirty()

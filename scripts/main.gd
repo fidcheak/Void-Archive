@@ -132,6 +132,7 @@ func _on_prestige_back_pressed() -> void:
 	_ops_screen.visible = true
 
 func _on_mining_button_pressed() -> void:
+	if not GameState.flags.get("crypto_unlocked", false): return
 	_ops_screen.visible = false
 	_mining_screen.visible = true
 

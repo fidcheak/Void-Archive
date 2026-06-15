@@ -14,6 +14,7 @@ static func can_buy_rig(id: String) -> bool:
 	return (not d.is_empty()) and GameState.get_resource(String(d.get("cost_res", "data"))) >= rig_cost(id)
 
 static func buy_rig(id: String) -> bool:
+	if not GameState.flags.get("crypto_unlocked", false): return false
 	if not can_buy_rig(id): return false
 	var d := MiningDB.get_rig(id)
 	GameState.add_resource(String(d.get("cost_res", "data")), -rig_cost(id))

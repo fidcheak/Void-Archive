@@ -76,6 +76,7 @@ func _on_tick(delta: float) -> void:
 	_refresh()
 
 func _refresh() -> void:
+	visible = GameState.flags.get("crypto_unlocked", false)
 	if not is_visible_in_tree(): return
 	for id in _rows.keys():
 		var row: Dictionary = _rows[id]

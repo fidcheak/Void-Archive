@@ -1,6 +1,7 @@
 class_name Production
 
 const BASE_ENERGY := 10.0
+const CORRUPT_ENERGY_K := 1.0   # при коррупции=1.0 потребление ×2 (тюнится)
 
 static func recompute() -> Dictionary:
 	var base_energy := BASE_ENERGY + Research.get_base_energy_bonus() + Abilities.get_energy_bonus()
@@ -11,6 +12,7 @@ static func recompute() -> Dictionary:
 		if n <= 0.0: continue
 		e_prod += float(b.get("produces", {}).get("energy", 0.0)) * n
 		e_dem += float(b.get("consumes", {}).get("energy", 0.0)) * n
+	e_dem *= (1.0 + CORRUPT_ENERGY_K * GameState.corruption)
 	var ratio := 1.0
 	if e_dem > 0.0:
 		ratio = clampf(e_prod / e_dem, 0.0, 1.0)

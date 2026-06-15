@@ -218,6 +218,14 @@ static func _build() -> void:
 			"pos": Vector2(-520, -150),
 		},
 		{
+			"id": "c_crypto", "name": "Криптография", "branch": "cognition",
+			"desc": "Открывает крипто-добычу.",
+			"rarity": "rare",
+			"requires": ["c_root"], "cost": { "compute": 500.0 },
+			"effects": { "set_flag": "crypto_unlocked" },
+			"pos": Vector2(-200, -150),
+		},
+		{
 			"id": "c_insight", "name": "Прозрение", "branch": "cognition",
 			"desc": "Понимание данных ускоряет добычу.",
 			"requires": ["c_parallel"], "cost": { "compute": 220.0 },
