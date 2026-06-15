@@ -1,12 +1,17 @@
 class_name MachineRoster
 extends PanelContainer
 
-const ICON_SIZE := 48.0
+const CATEGORIES := ["Данные", "Энергия", "Вычисления"]
+const CATEGORY_COLORS := {
+	"Данные": Palette.AMBER,
+	"Энергия": Palette.ENERGY,
+	"Вычисления": Palette.COMPUTE,
+}
 
 var detail_overlay: Control
 
-var _list: VBoxContainer
-var _icons := {}  # id -> { "root": Control, "button": Button, "badge": Label }
+var _icons := {}  # id -> { "root": Control, "count": Label }
+var _empty_labels := {}  # category -> Label
 var _acc := 0.0
 
 var _detail_title: Label
@@ -18,30 +23,39 @@ var _detail_consumes_total: Label
 var _detail_panel: PanelContainer
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(150, 0)
+	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	var margin := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_%s" % side, 8)
+	add_child(margin)
+
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 6)
+	margin.add_child(outer)
+
+	var header := Label.new()
+	header.text = "ПОСТРОЕНО"
+	header.add_theme_color_override("font_color", Palette.TEXT_DIM)
+	header.add_theme_font_size_override("font_size", 11)
+	outer.add_child(header)
+	outer.add_child(HSeparator.new())
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	add_child(scroll)
+	outer.add_child(scroll)
 
-	var margin := MarginContainer.new()
-	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_%s" % side, 8)
-	scroll.add_child(margin)
+	var columns := HBoxContainer.new()
+	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	columns.add_theme_constant_override("separation", 12)
+	scroll.add_child(columns)
 
-	_list = VBoxContainer.new()
-	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_list.alignment = BoxContainer.ALIGNMENT_BEGIN
-	_list.add_theme_constant_override("separation", 8)
-	margin.add_child(_list)
-
-	for b in BuildingsDB.get_list():
-		_list.add_child(_build_icon(b))
+	for cat in CATEGORIES:
+		columns.add_child(_build_column(cat))
 
 	_build_detail_overlay()
 
@@ -50,36 +64,92 @@ func _ready() -> void:
 
 	_refresh()
 
-func _build_icon(b: Dictionary) -> Control:
-	var root := VBoxContainer.new()
-	root.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	root.alignment = BoxContainer.ALIGNMENT_CENTER
+func _build_column(category: String) -> Control:
+	var col := VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation", 4)
 
-	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(ICON_SIZE, ICON_SIZE)
-	btn.text = String(b.get("icon", "?"))
-	btn.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var header := Label.new()
+	header.text = category.to_upper()
+	header.add_theme_color_override("font_color", CATEGORY_COLORS.get(category, Palette.TEXT_DIM))
+	header.add_theme_font_size_override("font_size", 11)
+	col.add_child(header)
+	col.add_child(HSeparator.new())
+
+	var rows := VBoxContainer.new()
+	rows.add_theme_constant_override("separation", 4)
+	col.add_child(rows)
+
+	var empty_label := Label.new()
+	empty_label.text = "—"
+	empty_label.add_theme_color_override("font_color", Palette.TEXT_MUTE)
+	col.add_child(empty_label)
+	_empty_labels[category] = empty_label
+
+	for b in BuildingsDB.get_list():
+		if b.get("category", "") == category:
+			rows.add_child(_build_row(b))
+
+	return col
+
+func _build_icon_box(b: Dictionary) -> Control:
+	var box := PanelContainer.new()
+	box.custom_minimum_size = Vector2(20, 20)
 
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = b.get("icon_color", Palette.AMBER)
-	sb.set_corner_radius_all(8)
-	for state in ["normal", "hover", "pressed", "focus"]:
-		btn.add_theme_stylebox_override(state, sb)
-	btn.add_theme_color_override("font_color", Palette.BG)
-	btn.add_theme_color_override("font_hover_color", Palette.BG)
-	btn.add_theme_color_override("font_pressed_color", Palette.BG)
+	sb.set_corner_radius_all(0)
+	sb.content_margin_left = 0
+	sb.content_margin_right = 0
+	sb.content_margin_top = 0
+	sb.content_margin_bottom = 0
+	box.add_theme_stylebox_override("panel", sb)
 
+	var lbl := Label.new()
+	lbl.text = String(b.get("icon", "?"))
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.add_theme_color_override("font_color", Palette.BG)
+	lbl.add_theme_font_size_override("font_size", 11)
+	box.add_child(lbl)
+
+	return box
+
+func _build_row(b: Dictionary) -> Control:
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(0, 22)
+
+	var hbox := HBoxContainer.new()
+	hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hbox.add_theme_constant_override("separation", 6)
+	holder.add_child(hbox)
+
+	hbox.add_child(_build_icon_box(b))
+
+	var name_label := Label.new()
+	name_label.text = String(b.get("name", b["id"]))
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_label.clip_text = true
+	name_label.add_theme_font_size_override("font_size", 11)
+	hbox.add_child(name_label)
+
+	var count_label := Label.new()
+	count_label.add_theme_color_override("font_color", Palette.TEXT_2)
+	count_label.add_theme_font_size_override("font_size", 11)
+	hbox.add_child(count_label)
+
+	var btn := Button.new()
+	btn.flat = true
+	btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var empty := StyleBoxEmpty.new()
+	for s in ["normal", "hover", "pressed", "focus"]:
+		btn.add_theme_stylebox_override(s, empty)
 	btn.pressed.connect(_on_icon_pressed.bind(b["id"]))
-	root.add_child(btn)
+	holder.add_child(btn)
 
-	var badge := Label.new()
-	badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	badge.add_theme_color_override("font_color", Palette.TEXT_2)
-	root.add_child(badge)
-
-	root.visible = false
-	_icons[b["id"]] = { "root": root, "button": btn, "badge": badge }
-	return root
+	holder.visible = false
+	_icons[b["id"]] = { "root": holder, "count": count_label }
+	return holder
 
 func _build_detail_overlay() -> void:
 	detail_overlay = Control.new()
@@ -183,8 +253,14 @@ func _on_tick(delta: float) -> void:
 
 func _refresh() -> void:
 	if not is_visible_in_tree(): return
+	var owned_categories := {}
 	for id in _icons.keys():
 		var row: Dictionary = _icons[id]
 		var count := Buildings.count(id)
 		row["root"].visible = count > 0
-		row["badge"].text = "×%d" % count
+		row["count"].text = "×%d" % count
+		if count > 0:
+			owned_categories[BuildingsDB.get_def(id).get("category", "")] = true
+
+	for cat in _empty_labels.keys():
+		_empty_labels[cat].visible = not owned_categories.get(cat, false)

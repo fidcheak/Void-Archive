@@ -1,7 +1,7 @@
 extends Control
 
 const CORE_SIZE := 240.0
-const TERMINAL_WIDTH := 280.0
+const TERMINAL_WIDTH := 230.0
 
 var _core_rect: ColorRect
 var _crt_material: ShaderMaterial
@@ -52,6 +52,7 @@ func _ready() -> void:
 	var center_col := VBoxContainer.new()
 	center_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	center_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	center_col.size_flags_stretch_ratio = 2.0
 	middle.add_child(center_col)
 
 	var anomaly_banner := AnomalyBanner.new()
@@ -76,6 +77,7 @@ func _ready() -> void:
 	var right_zone := HBoxContainer.new()
 	right_zone.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right_zone.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right_zone.size_flags_stretch_ratio = 3.0
 	middle.add_child(right_zone)
 
 	var machine_roster := MachineRoster.new()
