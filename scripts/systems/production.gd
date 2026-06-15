@@ -35,6 +35,12 @@ static func recompute() -> Dictionary:
 	for res in rates.keys():
 		rates[res] = float(rates[res]) * global_mult * Abilities.get_production_mult(res)
 
+	var upkeep := Mining.total_compute_upkeep()
+	var gross_compute := float(rates.get("compute", 0.0))
+	var consumed := minf(upkeep, maxf(0.0, gross_compute))
+	rates["compute"] = gross_compute - consumed
+	Mining.mining_ratio = (consumed / upkeep) if upkeep > 0.0 else 1.0
+
 	GameState.production_rates = rates
 	GameLoop.current_data_rate = float(rates.get("data", 0.0))
 	return { "rates": rates, "ratio": ratio }

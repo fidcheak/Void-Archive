@@ -5,6 +5,7 @@ signal mining_pressed
 
 var _rows := {}  # id -> { "balance": Label, "rate": Label }
 var _acc := 0.0
+var _throttle_label: Label
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(240, 0)
@@ -23,6 +24,13 @@ func _ready() -> void:
 	header.text = "КРИПТА"
 	header.add_theme_color_override("font_color", Palette.CRYPTO)
 	box.add_child(header)
+
+	_throttle_label = Label.new()
+	_throttle_label.add_theme_color_override("font_color", Palette.WARN)
+	_throttle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_throttle_label.visible = false
+	box.add_child(_throttle_label)
+
 	box.add_child(HSeparator.new())
 
 	var scroll := ScrollContainer.new()
@@ -78,6 +86,11 @@ func _on_tick(delta: float) -> void:
 func _refresh() -> void:
 	visible = GameState.flags.get("crypto_unlocked", false)
 	if not is_visible_in_tree(): return
+	if Mining.mining_ratio < 1.0:
+		_throttle_label.text = "⚠ добыча снижена (%d%%)" % int(round(Mining.mining_ratio * 100.0))
+		_throttle_label.visible = true
+	else:
+		_throttle_label.visible = false
 	for id in _rows.keys():
 		var row: Dictionary = _rows[id]
 		row["balance"].text = Format.num(GameState.get_resource(id))

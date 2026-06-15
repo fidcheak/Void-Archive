@@ -1,5 +1,7 @@
 class_name Mining
 
+static var mining_ratio := 1.0   # 0..1, выставляется из Production по нехватке Вычислений
+
 # ---- риги ----
 static func rig_count(id: String) -> int:
 	return int(GameState.crypto_rigs.get(id, 0))
@@ -36,7 +38,13 @@ static func crypto_rate(crypto_id: String) -> float:
 		var n := float(rig_count(r["id"]))
 		if n <= 0.0: continue
 		total += float(r.get("mines", {}).get(crypto_id, 0.0)) * n
-	return total * mine_mult()
+	return total * mine_mult() * mining_ratio
+
+static func total_compute_upkeep() -> float:
+	var u := 0.0
+	for r in MiningDB.get_rigs():
+		u += float(r.get("compute_upkeep", 0.0)) * float(rig_count(r["id"]))
+	return u
 
 static func compute_crypto_rates() -> Dictionary:
 	var rates := {}

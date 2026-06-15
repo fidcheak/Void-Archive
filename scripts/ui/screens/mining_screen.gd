@@ -4,7 +4,8 @@ extends Control
 signal back_pressed
 
 var _balance_rows := {}   # crypto_id -> { "balance": Label, "rate": Label }
-var _rig_rows := {}       # rig_id -> { "count": Label, "cost": Label, "button": Button }
+var _upkeep_label: Label
+var _rig_rows := {} # rig_id -> { "count": Label, "cost": Label, "button": Button }
 var _upg_rows := {}       # upg_id -> { "status": Label, "desc": Label, "cost": Label, "button": Button }
 var _acc := 0.0
 
@@ -100,6 +101,11 @@ func _build_rigs_section(list: VBoxContainer) -> void:
 	header.text = "РИГИ"
 	header.add_theme_color_override("font_color", Palette.AMBER)
 	list.add_child(header)
+
+	_upkeep_label = Label.new()
+	_upkeep_label.add_theme_color_override("font_color", Palette.TEXT_2)
+	_upkeep_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	list.add_child(_upkeep_label)
 
 	for r in MiningDB.get_rigs():
 		list.add_child(_build_rig_row(r))
@@ -249,6 +255,17 @@ func _on_visibility_changed() -> void:
 
 func _refresh() -> void:
 	if not is_visible_in_tree(): return
+	var upkeep := Mining.total_compute_upkeep()
+	if upkeep > 0.0:
+		_upkeep_label.text = "Потребление: %s выч/сек" % Format.num(upkeep)
+		if Mining.mining_ratio < 1.0:
+			_upkeep_label.text += "  —  Нехватка вычислений: добыча %d%%" % int(round(Mining.mining_ratio * 100.0))
+			_upkeep_label.add_theme_color_override("font_color", Palette.WARN)
+		else:
+			_upkeep_label.add_theme_color_override("font_color", Palette.TEXT_2)
+	else:
+		_upkeep_label.text = ""
+
 	for id in _balance_rows.keys():
 		var row: Dictionary = _balance_rows[id]
 		row["balance"].text = Format.num(GameState.get_resource(id))
