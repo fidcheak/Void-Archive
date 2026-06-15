@@ -3,8 +3,18 @@ extends Control
 
 signal back_pressed
 
+const ROW_H := 160.0   # вертикальный шаг между уровнями (рядами)
+const COL_W := 140.0   # минимальный горизонтальный интервал между узлами ряда
+const BRANCH_ORIGIN := {
+	"machines":  Vector2(0,     0),
+	"cognition": Vector2(-1100, 0),
+	"void":      Vector2(1100,  0),
+	"energy":    Vector2(0,     900),
+}
+
 var _graph: TreeGraph
 var _compute_label: Label
+var _layout: Dictionary = {}   # id -> Vector2 (авто-раскладка по слоям)
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -14,6 +24,8 @@ func _ready() -> void:
 	add_child(layout)
 
 	layout.add_child(_build_header())
+
+	_layout = _compute_layout()
 
 	_graph = TreeGraph.new()
 	_graph.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -76,7 +88,7 @@ func _nodes() -> Array:
 
 		result.append({
 			"id": r["id"], "title": r["name"], "desc": String(r.get("desc", "")),
-			"pos": r["pos"], "color": branch_colors.get(r["branch"], Palette.TEXT_3),
+			"pos": _layout.get(r["id"], r["pos"]), "color": branch_colors.get(r["branch"], Palette.TEXT_3),
 			"rarity": r.get("rarity", "common"),
 			"state": state,
 			"level": lvl, "max_level": max_lvl,
@@ -178,3 +190,109 @@ func _refresh() -> void:
 	if not is_visible_in_tree(): return
 	_compute_label.text = Format.num(GameState.get_resource("compute"))
 	_graph.refresh()
+
+# ---- авто-раскладка по слоям: глубина -> ряд, барицентр предпосылок -> столбец (Слой D) ----
+func _compute_layout() -> Dictionary:
+	var by_id := {}
+	var by_branch := {}
+	for r in ResearchDB.get_list():
+		by_id[r["id"]] = r
+		var b: String = r["branch"]
+		if not by_branch.has(b):
+			by_branch[b] = []
+		by_branch[b].append(r["id"])
+
+	var result := {}
+	for b in by_branch:
+		var ids: Array = by_branch[b]
+		var origin: Vector2 = BRANCH_ORIGIN.get(b, Vector2.ZERO)
+
+		# 1) глубина = длина самой длинной цепочки предпосылок внутри ветки
+		var depth := {}
+		for id in ids:
+			_compute_depth(id, b, by_id, depth)
+
+		var max_depth := 0
+		var rows := {}
+		for id in ids:
+			var d: int = depth[id]
+			max_depth = maxi(max_depth, d)
+			if not rows.has(d):
+				rows[d] = []
+			rows[d].append(id)
+
+		# 3) горизонталь по барицентру предпосылок, ряд за рядом от корней вверх
+		var x := {}
+		for d in range(0, max_depth + 1):
+			if not rows.has(d):
+				continue
+			var row: Array = rows[d]
+
+			var prefx := {}
+			for id in row:
+				var refs := PackedFloat64Array()
+				for p in by_id[id].get("requires", []):
+					if by_id.has(p) and by_id[p]["branch"] == b and x.has(p):
+						refs.append(x[p])
+				if refs.is_empty():
+					prefx[id] = 0.0   # корни — локальный центр кластера ветки
+				else:
+					var sum := 0.0
+					for v in refs:
+						sum += v
+					prefx[id] = sum / refs.size()
+
+			row.sort_custom(func(a, c): return prefx[a] < prefx[c])
+
+			var n := row.size()
+			var avg_prefx := 0.0
+			for id in row:
+				avg_prefx += prefx[id]
+			avg_prefx /= n
+
+			var span := float(n - 1) * COL_W
+			for i in range(n):
+				x[row[i]] = avg_prefx - span * 0.5 + float(i) * COL_W
+
+		# 4) полировка сверху-вниз: родитель подвинут к среднему x своих детей-в-ветке
+		var children := {}
+		for id in ids:
+			for p in by_id[id].get("requires", []):
+				if by_id.has(p) and by_id[p]["branch"] == b:
+					if not children.has(p):
+						children[p] = []
+					children[p].append(id)
+		for d in range(max_depth, -1, -1):
+			if not rows.has(d):
+				continue
+			for id in rows[d]:
+				if children.has(id):
+					var sum := 0.0
+					for c in children[id]:
+						sum += x[c]
+					x[id] = sum / children[id].size()
+
+		# 5) финальная раздвижка: полировка могла свести соседей вместе — гарантируем интервал >= COL_W
+		for d in rows:
+			var row: Array = rows[d].duplicate()
+			row.sort_custom(func(a, c): return x[a] < x[c])
+			for i in range(1, row.size()):
+				if x[row[i]] - x[row[i - 1]] < COL_W:
+					x[row[i]] = x[row[i - 1]] + COL_W
+
+		# 6) итоговые позиции (y растёт вверх с глубиной)
+		for id in ids:
+			var d: int = depth[id]
+			result[id] = Vector2(origin.x + x[id], origin.y - float(d) * ROW_H)
+
+	return result
+
+func _compute_depth(id: String, branch: String, by_id: Dictionary, depth: Dictionary) -> int:
+	if depth.has(id):
+		return depth[id]
+	var max_d := -1
+	for p in by_id[id].get("requires", []):
+		if by_id.has(p) and by_id[p]["branch"] == branch:
+			max_d = maxi(max_d, _compute_depth(p, branch, by_id, depth))
+	depth[id] = max_d + 1
+	return depth[id]
