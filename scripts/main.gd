@@ -2,6 +2,8 @@ extends Control
 
 const CORE_SIZE := 240.0
 const TERMINAL_WIDTH := 230.0
+const LEFT_RATIO := 55.0
+const RIGHT_RATIO := 45.0
 
 var _core_rect: ColorRect
 var _crt_material: ShaderMaterial
@@ -26,34 +28,48 @@ func _ready() -> void:
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ops_screen.add_child(bg)
 
-	var layout := VBoxContainer.new()
-	layout.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_ops_screen.add_child(layout)
+	var root_split := HBoxContainer.new()
+	root_split.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root_split.add_theme_constant_override("separation", 8)
+	_ops_screen.add_child(root_split)
+
+	var left_zone := VBoxContainer.new()
+	left_zone.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left_zone.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left_zone.size_flags_stretch_ratio = LEFT_RATIO
+	root_split.add_child(left_zone)
+
+	var right_zone := HBoxContainer.new()
+	right_zone.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_zone.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right_zone.size_flags_stretch_ratio = RIGHT_RATIO
+	root_split.add_child(right_zone)
 
 	var topbar := TopBar.new()
 	topbar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	topbar.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	layout.add_child(topbar)
-	topbar.add_nav_button("⌬", "Дерево исследований", _on_tree_button_pressed)
-	topbar.add_nav_button("⟲", "Временная линия", _on_prestige_button_pressed)
-	topbar.add_nav_button("⛏", "Крипто-ферма", _on_mining_button_pressed)
+	left_zone.add_child(topbar)
+	topbar.add_nav_column([
+		{ "glyph": "⛏", "tooltip": "Майнинг-шахта", "callback": _on_mining_button_pressed },
+		{ "glyph": "⬡", "tooltip": "Прокачка", "callback": _on_tree_button_pressed },
+		{ "glyph": "⟲", "tooltip": "Престиж", "callback": _on_prestige_button_pressed },
+	])
 
-	var middle := HBoxContainer.new()
-	middle.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	middle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	layout.add_child(middle)
+	var bottom_row := HBoxContainer.new()
+	bottom_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bottom_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	left_zone.add_child(bottom_row)
 
 	var terminal := TerminalPanel.new()
 	terminal.custom_minimum_size = Vector2(TERMINAL_WIDTH, 0)
 	terminal.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	terminal.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	middle.add_child(terminal)
+	bottom_row.add_child(terminal)
 
 	var center_col := VBoxContainer.new()
 	center_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	center_col.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	center_col.size_flags_stretch_ratio = 2.0
-	middle.add_child(center_col)
+	bottom_row.add_child(center_col)
 
 	var anomaly_banner := AnomalyBanner.new()
 	center_col.add_child(anomaly_banner)
@@ -74,18 +90,13 @@ func _ready() -> void:
 	var corruption_bar := CorruptionBar.new()
 	center_col.add_child(corruption_bar)
 
-	var right_zone := HBoxContainer.new()
-	right_zone.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right_zone.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	right_zone.size_flags_stretch_ratio = 3.0
-	middle.add_child(right_zone)
-
 	var machine_roster := MachineRoster.new()
 	machine_roster.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	machine_roster.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right_zone.add_child(machine_roster)
-	_ops_screen.add_child(machine_roster.detail_overlay)
 
 	var buildings_panel := BuildingsPanel.new()
+	buildings_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right_zone.add_child(buildings_panel)
 
 	_tree_screen = ResearchTreeScreen.new()

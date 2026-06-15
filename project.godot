@@ -21,6 +21,7 @@ GameState="*res://scripts/core/game_state.gd"
 Events="*res://scripts/core/events.gd"
 GameLoop="*res://scripts/core/game_loop.gd"
 SaveManager="*res://scripts/core/save_manager.gd"
+DetailPopup="*res://scripts/ui/detail_popup.gd"
 
 [debug]
 

@@ -9,6 +9,8 @@ var _energy_label: Label
 var _power_label: Label
 var _power_bar: ProgressBar
 var _power_bar_fill: StyleBoxFlat
+var _data_mult_label: Label
+var _data_top_labels: Array = []
 var _box: HBoxContainer
 var _acc := 0.0
 
@@ -17,6 +19,9 @@ const BAR_HEIGHT := 10.0
 const GROUP_SEPARATION := 12
 const NAV_BUTTON_SIZE := 34.0
 const VALUE_FONT_SIZE := 20
+const WIDGET_WIDTH := 130.0
+const CRYPTO_WIDGET_WIDTH := 190.0
+const TOP_PRODUCERS_COUNT := 3
 
 func _ready() -> void:
 	for side in ["left", "right", "top", "bottom"]:
@@ -32,10 +37,6 @@ func _ready() -> void:
 	box.add_child(_build_energy_module())
 	box.add_child(_build_crypto_module())
 
-	var right_spacer := Control.new()
-	right_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_child(right_spacer)
-
 	Events.resource_changed.connect(_on_resource_changed)
 	Events.tick.connect(_on_tick)
 
@@ -49,36 +50,61 @@ func _accent(color: Color) -> Control:
 
 func _build_data_module() -> Control:
 	var m := ThemeBuilder.framed_module(Labels.res_name("data"))
+	m["panel"].custom_minimum_size = Vector2(WIDGET_WIDTH, 0)
 	var body := m["body"] as VBoxContainer
 
 	_value_label = Label.new()
 	_value_label.text = Format.num(GameState.get_resource("data"))
 	_value_label.add_theme_color_override("font_color", Palette.AMBER)
 	_value_label.add_theme_font_size_override("font_size", VALUE_FONT_SIZE)
+	_value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	body.add_child(_value_label)
 
 	_rate_label = Label.new()
 	_rate_label.text = Format.rate(GameState.production_rates.get("data", 0.0))
 	_rate_label.add_theme_color_override("font_color", Palette.TEXT_DIM)
+	_rate_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	body.add_child(_rate_label)
 
 	body.add_child(_accent(Palette.AMBER))
+
+	body.add_child(HSeparator.new())
+
+	_data_mult_label = Label.new()
+	_data_mult_label.add_theme_color_override("font_color", Palette.TEXT_2)
+	_data_mult_label.add_theme_font_size_override("font_size", 10)
+	_data_mult_label.clip_text = true
+	body.add_child(_data_mult_label)
+
+	_data_top_labels.clear()
+	for i in range(TOP_PRODUCERS_COUNT):
+		var l := Label.new()
+		l.add_theme_color_override("font_color", Palette.TEXT_3)
+		l.add_theme_font_size_override("font_size", 10)
+		l.clip_text = true
+		body.add_child(l)
+		_data_top_labels.append(l)
+
+	_refresh_data_extra()
 
 	return m["panel"]
 
 func _build_compute_module() -> Control:
 	var m := ThemeBuilder.framed_module(Labels.res_name("compute"))
+	m["panel"].custom_minimum_size = Vector2(WIDGET_WIDTH, 0)
 	var body := m["body"] as VBoxContainer
 
 	_compute_label = Label.new()
 	_compute_label.text = Format.num(GameState.get_resource("compute"))
 	_compute_label.add_theme_color_override("font_color", Palette.COMPUTE)
 	_compute_label.add_theme_font_size_override("font_size", VALUE_FONT_SIZE)
+	_compute_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	body.add_child(_compute_label)
 
 	_compute_rate_label = Label.new()
 	_compute_rate_label.text = Format.rate(GameState.production_rates.get("compute", 0.0))
 	_compute_rate_label.add_theme_color_override("font_color", Palette.TEXT_DIM)
+	_compute_rate_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	body.add_child(_compute_rate_label)
 
 	body.add_child(_accent(Palette.COMPUTE))
@@ -87,11 +113,13 @@ func _build_compute_module() -> Control:
 
 func _build_energy_module() -> Control:
 	var m := ThemeBuilder.framed_module(Labels.res_name("energy"))
+	m["panel"].custom_minimum_size = Vector2(WIDGET_WIDTH, 0)
 	var body := m["body"] as VBoxContainer
 
 	_energy_label = Label.new()
 	_energy_label.add_theme_color_override("font_color", Palette.ENERGY)
 	_energy_label.add_theme_font_size_override("font_size", VALUE_FONT_SIZE)
+	_energy_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	body.add_child(_energy_label)
 
 	_power_label = Label.new()
@@ -121,6 +149,7 @@ func _build_energy_module() -> Control:
 
 func _build_crypto_module() -> Control:
 	var m := ThemeBuilder.framed_module("Крипта")
+	m["panel"].custom_minimum_size = Vector2(CRYPTO_WIDGET_WIDTH, 0)
 	var body := m["body"] as VBoxContainer
 
 	body.add_child(CryptoTracker.new())
@@ -128,16 +157,20 @@ func _build_crypto_module() -> Control:
 
 	return m["panel"]
 
-func add_nav_button(glyph: String, tooltip: String, callback: Callable) -> Button:
-	var btn := Button.new()
-	btn.text = glyph
-	btn.tooltip_text = tooltip
-	btn.custom_minimum_size = Vector2(NAV_BUTTON_SIZE, NAV_BUTTON_SIZE)
-	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	btn.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	btn.pressed.connect(callback)
-	_box.add_child(btn)
-	return btn
+# buttons: Array of { "glyph": String, "tooltip": String, "callback": Callable }
+func add_nav_column(buttons: Array) -> void:
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 4)
+	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	for b in buttons:
+		var btn := Button.new()
+		btn.text = String(b["glyph"])
+		btn.tooltip_text = String(b["tooltip"])
+		btn.custom_minimum_size = Vector2(NAV_BUTTON_SIZE, NAV_BUTTON_SIZE)
+		btn.alignment = HORIZONTAL_ALIGNMENT_CENTER
+		btn.pressed.connect(b["callback"])
+		col.add_child(btn)
+	_box.add_child(col)
 
 func _on_resource_changed(id: String, value: float) -> void:
 	if id == "data":
@@ -152,6 +185,35 @@ func _on_tick(delta: float) -> void:
 	_rate_label.text = Format.rate(GameState.production_rates.get("data", 0.0))
 	_compute_rate_label.text = Format.rate(GameState.production_rates.get("compute", 0.0))
 	_refresh_energy()
+	_refresh_data_extra()
+
+func _refresh_data_extra() -> void:
+	_data_mult_label.text = "Общий множитель: ×%s" % Format.num(Research.get_production_mult("data"))
+
+	var top := _top_data_producers()
+	for i in range(_data_top_labels.size()):
+		if i < top.size():
+			var e: Dictionary = top[i]
+			_data_top_labels[i].text = "%s ×%d — ×%s" % [e["name"], e["count"], Format.num(e["mult"])]
+		else:
+			_data_top_labels[i].text = ""
+
+func _top_data_producers() -> Array:
+	var entries := []
+	for b in BuildingsDB.get_list():
+		var n := Buildings.count(b["id"])
+		if n <= 0: continue
+		var produce := float(b.get("produces", {}).get("data", 0.0))
+		if produce <= 0.0: continue
+		var bmult := Research.get_building_mult(b["id"])
+		entries.append({
+			"name": String(b.get("name", b["id"])),
+			"count": n,
+			"mult": bmult,
+			"contribution": produce * float(n) * bmult,
+		})
+	entries.sort_custom(func(a, b): return a["contribution"] > b["contribution"])
+	return entries.slice(0, TOP_PRODUCERS_COUNT)
 
 func _refresh_energy() -> void:
 	var prod := GameState.energy_production

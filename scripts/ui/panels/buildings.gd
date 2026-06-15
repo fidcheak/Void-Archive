@@ -18,8 +18,10 @@ func _ready() -> void:
 			categories.append(cat)
 		by_category[cat].append(b)
 
+	var tier_colors := _build_tier_colors(by_category)
+
 	for cat in categories:
-		add_child(_build_tab(cat, by_category[cat]))
+		add_child(_build_tab(cat, by_category[cat], tier_colors))
 
 	Events.tick.connect(_on_tick)
 	Events.building_purchased.connect(_on_building_purchased)
@@ -28,7 +30,29 @@ func _ready() -> void:
 
 	_refresh()
 
-func _build_tab(cat: String, items: Array) -> Control:
+func _base_cost(b: Dictionary) -> float:
+	var total := 0.0
+	for v in b.get("cost", {}).values():
+		total += float(v)
+	return total
+
+func _tier_color(t: float) -> Color:
+	if t <= 0.5:
+		return Palette.TEXT_DIM.lerp(Palette.RARITY_RARE, t * 2.0)
+	return Palette.RARITY_RARE.lerp(Palette.RARITY_LEGENDARY, (t - 0.5) * 2.0)
+
+func _build_tier_colors(by_category: Dictionary) -> Dictionary:
+	var tier_colors := {}
+	for cat in by_category.keys():
+		var items: Array = (by_category[cat] as Array).duplicate()
+		items.sort_custom(func(a, b): return _base_cost(a) < _base_cost(b))
+		var n := items.size()
+		for i in range(n):
+			var t := 0.0 if n <= 1 else float(i) / float(n - 1)
+			tier_colors[items[i]["id"]] = _tier_color(t)
+	return tier_colors
+
+func _build_tab(cat: String, items: Array, tier_colors: Dictionary) -> Control:
 	var scroll := ScrollContainer.new()
 	scroll.name = cat
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -46,20 +70,30 @@ func _build_tab(cat: String, items: Array) -> Control:
 	margin.add_child(list)
 
 	for b in items:
-		list.add_child(_build_row(b))
+		list.add_child(_build_row(b, tier_colors.get(b["id"], Palette.TEXT_DIM)))
 
 	return scroll
 
-func _build_row(b: Dictionary) -> Control:
+func _build_row(b: Dictionary, tier_color: Color) -> Control:
+	var outer := HBoxContainer.new()
+	outer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	outer.add_theme_constant_override("separation", 8)
+
+	var accent := ColorRect.new()
+	accent.color = tier_color
+	accent.custom_minimum_size = Vector2(3, 0)
+	outer.add_child(accent)
+
 	var row := VBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	outer.add_child(row)
 
 	var sep := HSeparator.new()
 	row.add_child(sep)
 
 	var name_label := Label.new()
 	name_label.text = b["name"]
-	name_label.add_theme_color_override("font_color", Palette.AMBER)
+	name_label.add_theme_color_override("font_color", tier_color)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	row.add_child(name_label)
@@ -88,8 +122,9 @@ func _build_row(b: Dictionary) -> Control:
 		"effect": effect_label,
 		"cost": cost_label,
 		"button": buy_button,
+		"accent": accent,
 	}
-	return row
+	return outer
 
 func _effect_text(b: Dictionary) -> String:
 	var parts := PackedStringArray()
@@ -146,6 +181,7 @@ func _refresh() -> void:
 
 		if Buildings.is_unlocked(id):
 			row["name"].modulate.a = 1.0
+			row["accent"].modulate.a = 1.0
 			row["effect"].text = _effect_text(def)
 			row["effect"].add_theme_color_override("font_color", Palette.TEXT_2)
 			row["cost"].visible = true
@@ -156,6 +192,7 @@ func _refresh() -> void:
 			row["button"].modulate.a = 1.0 if affordable else 0.5
 		else:
 			row["name"].modulate.a = 0.5
+			row["accent"].modulate.a = 0.5
 			row["effect"].text = "🔒 Требуется исследование: %s" % _research_name(String(def.get("requires_research", "")))
 			row["effect"].add_theme_color_override("font_color", Palette.TEXT_3)
 			row["cost"].visible = false
