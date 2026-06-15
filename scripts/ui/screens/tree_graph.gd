@@ -163,21 +163,30 @@ func _apply_node_style(n: Dictionary) -> void:
 	match int(n["state"]):
 		NodeState.OWNED:
 			sb.bg_color = color
-			btn.text = "✓"
+			if n.has("level"):
+				var lvl := int(n["level"])
+				var max_lvl := int(n.get("max_level", 1))
+				btn.text = "%d/%d" % [lvl, max_lvl]
+				if lvl < max_lvl:
+					# в процессе — ещё доступны следующие ранги
+					sb.border_color = color.lightened(0.4)
+					sb.set_border_width_all(3)
+			else:
+				btn.text = "✓"
 			btn.modulate.a = 1.0
 			label.add_theme_color_override("font_color", color)
 		NodeState.AVAILABLE:
 			sb.bg_color = Palette.SURFACE_2
 			sb.border_color = color
 			sb.set_border_width_all(3)
-			btn.text = ""
+			btn.text = ("%d/%d" % [int(n.get("level", 0)), int(n.get("max_level", 1))]) if n.has("level") else ""
 			btn.modulate.a = 1.0
 			label.add_theme_color_override("font_color", Palette.TEXT)
 		_:
 			sb.bg_color = Palette.SURFACE
 			sb.border_color = Palette.LINE
 			sb.set_border_width_all(2)
-			btn.text = ""
+			btn.text = ("0/%d" % int(n["max_level"])) if n.has("max_level") else ""
 			btn.modulate.a = 0.5
 			label.add_theme_color_override("font_color", Palette.TEXT_3)
 
@@ -336,8 +345,12 @@ func _update_detail(n: Dictionary) -> void:
 
 	match state:
 		NodeState.OWNED:
-			_detail_state.text = "СОСТОЯНИЕ: ПОЛУЧЕНО"
-			_detail_state.add_theme_color_override("font_color", Palette.OK)
+			if n.has("level") and int(n["level"]) < int(n.get("max_level", 1)):
+				_detail_state.text = "СОСТОЯНИЕ: В ПРОЦЕССЕ (%d/%d)" % [int(n["level"]), int(n.get("max_level", 1))]
+				_detail_state.add_theme_color_override("font_color", color)
+			else:
+				_detail_state.text = "СОСТОЯНИЕ: МАКСИМУМ" if n.has("level") else "СОСТОЯНИЕ: ПОЛУЧЕНО"
+				_detail_state.add_theme_color_override("font_color", Palette.OK)
 		NodeState.AVAILABLE:
 			_detail_state.text = "СОСТОЯНИЕ: ДОСТУПНО"
 			_detail_state.add_theme_color_override("font_color", color)
@@ -345,6 +358,7 @@ func _update_detail(n: Dictionary) -> void:
 			_detail_state.text = "СОСТОЯНИЕ: ЗАБЛОКИРОВАНО"
 			_detail_state.add_theme_color_override("font_color", Palette.TEXT_3)
 
+	var can_act := bool(n.get("can_act", state == NodeState.AVAILABLE))
 	_detail_action.text = String(n.get("action_label", ""))
-	_detail_action.disabled = state != NodeState.AVAILABLE
-	_detail_action.modulate.a = 1.0 if state == NodeState.AVAILABLE else 0.5
+	_detail_action.disabled = not can_act
+	_detail_action.modulate.a = 1.0 if can_act else 0.5

@@ -64,8 +64,12 @@ func _nodes() -> Array:
 
 	var result := []
 	for r in ResearchDB.get_list():
+		var lvl := Research.level(r["id"])
+		var max_lvl := Research.max_level(r["id"])
+		var maxed := Research.is_maxed(r["id"])
+
 		var state := TreeGraph.NodeState.LOCKED
-		if Research.is_owned(r["id"]):
+		if lvl >= 1:
 			state = TreeGraph.NodeState.OWNED
 		elif Research.is_available(r["id"]):
 			state = TreeGraph.NodeState.AVAILABLE
@@ -75,16 +79,18 @@ func _nodes() -> Array:
 			"pos": r["pos"], "color": branch_colors.get(r["branch"], Palette.TEXT_3),
 			"rarity": r.get("rarity", "common"),
 			"state": state,
+			"level": lvl, "max_level": max_lvl,
 			"cost_text": _cost_text(r),
 			"effect_text": _effect_text(r),
 			"req_text": _req_text(r),
-			"action_label": "Изучить",
+			"action_label": "Максимум" if maxed else "Изучить (ур. %d→%d)" % [lvl, lvl + 1],
+			"can_act": Research.can_research(r["id"]),
 			"requires": r.get("requires", []),
 		})
 	return result
 
 func _cost_text(r: Dictionary) -> String:
-	var cost: Dictionary = r.get("cost", {})
+	var cost: Dictionary = Research.next_cost(r["id"])
 	if cost.is_empty():
 		return "—"
 	var parts := PackedStringArray()
@@ -94,29 +100,30 @@ func _cost_text(r: Dictionary) -> String:
 
 func _effect_text(r: Dictionary) -> String:
 	var eff: Dictionary = r.get("effects", {})
+	var max_lvl := Research.max_level(r["id"])
+	var suffix := " за ранг" if max_lvl > 1 else ""
 	var parts := PackedStringArray()
+	parts.append("Уровень: %d / %d" % [Research.level(r["id"]), max_lvl])
 	if eff.has("mult_production"):
 		var mp: Dictionary = eff["mult_production"]
 		for res_id in mp.keys():
 			var factor := float(mp[res_id])
 			var tag := " (дебафф)" if factor < 1.0 else ""
-			parts.append("%s ×%s%s" % [Labels.res_name(res_id), Format.num(factor), tag])
+			parts.append("%s ×%s%s%s" % [Labels.res_name(res_id), Format.num(factor), suffix, tag])
 	if eff.has("mult_building"):
 		var mb: Dictionary = eff["mult_building"]
 		for b_id in mb.keys():
-			parts.append("%s ×%s" % [_building_name(b_id), Format.num(float(mb[b_id]))])
+			parts.append("%s ×%s%s" % [_building_name(b_id), Format.num(float(mb[b_id])), suffix])
 	if eff.has("add_base_energy"):
 		var bonus := float(eff["add_base_energy"])
 		var tag := " (дебафф)" if bonus < 0.0 else ""
-		parts.append("%+d базовой энергии%s" % [int(bonus), tag])
+		parts.append("%+d базовой энергии%s%s" % [int(bonus), suffix, tag])
 	var ability := _ability_unlock(r["id"])
 	if not ability.is_empty():
 		parts.append("Открывает: %s" % String(ability["name"]))
 	var building := _building_unlock(r["id"])
 	if not building.is_empty():
 		parts.append("Открывает постройку: %s" % String(building["name"]))
-	if parts.is_empty():
-		return "—"
 	return ", ".join(parts)
 
 func _ability_unlock(node_id: String) -> Dictionary:

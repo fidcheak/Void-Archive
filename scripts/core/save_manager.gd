@@ -41,7 +41,12 @@ func load_game() -> void:
 	if data.has("resources"): GameState.resources = data["resources"]
 	if data.has("buildings"): GameState.buildings = data["buildings"]
 	if data.has("meta"): GameState.meta = data["meta"]
-	if data.has("research"): GameState.research = data["research"]
+	if data.has("research"):
+		var r := {}
+		for k in data["research"]:
+			var v = data["research"][k]
+			r[k] = (1 if (v is bool and v) else int(v))
+		GameState.research = r
 	if data.has("corruption"): GameState.corruption = float(data["corruption"])
 	if data.has("flags"): GameState.flags = data["flags"]
 	if data.has("chrono_echo"): GameState.chrono_echo = float(data["chrono_echo"])

@@ -5,7 +5,7 @@ var buildings := {}                   # id -> count (пусто)
 var crypto_rigs := {}          # rig_id -> count — СОХРАНЯЕТСЯ
 var mining_upgrades := {}      # id -> true — СОХРАНЯЕТСЯ
 var meta := { "version": 0, "last_saved": 0.0, "total_clicks": 0 }
-var research := {}            # id -> true (изученные узлы) — СОХРАНЯЕТСЯ
+var research := {}            # id -> уровень (int, 0 = не взят) — СОХРАНЯЕТСЯ
 var corruption := 0.0         # 0..1, нестабильность — СОХРАНЯЕТСЯ
 var flags := {}                # вехи (id -> true) — СОХРАНЯЕТСЯ
 
