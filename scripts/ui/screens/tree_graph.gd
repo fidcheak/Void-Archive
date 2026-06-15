@@ -38,6 +38,7 @@ var _nodes_by_id := {}     # id -> node dict
 var _selected_id := ""
 var _dragging := false
 var _initialized_pan := false
+var _preview_blocked: Array = []   # id'ы узлов, временно подсвеченных как «будут заблокированы»
 
 # ---- кастомный узел-кружок: размер по редкости, заливка по уровню, кольцо/свечение редкости ----
 class NodeWidget extends Control:
@@ -47,6 +48,8 @@ class NodeWidget extends Control:
 	var branch_color: Color = Color.WHITE
 	var rarity := "common"
 	var state: int = TreeGraph.NodeState.LOCKED
+	var blocked_by_choice := false
+	var preview_blocked := false
 
 	var _anim_fill := 0.0
 	var _initialized := false
@@ -62,6 +65,7 @@ class NodeWidget extends Control:
 		branch_color = n["color"]
 		rarity = String(n.get("rarity", "common"))
 		state = int(n["state"])
+		blocked_by_choice = bool(n.get("blocked_by_choice", false))
 
 		var r := radius()
 		var new_size := Vector2.ONE * (r + TreeGraph.WIDGET_PAD) * 2.0
@@ -88,6 +92,12 @@ class NodeWidget extends Control:
 
 	func _set_anim_fill(v: float) -> void:
 		_anim_fill = v
+		queue_redraw()
+
+	func set_preview_blocked(v: bool) -> void:
+		if preview_blocked == v:
+			return
+		preview_blocked = v
 		queue_redraw()
 
 	func _draw() -> void:
@@ -119,7 +129,7 @@ class NodeWidget extends Control:
 				draw_line(Vector2(c.x - hw, float(yy)), Vector2(c.x + hw, float(yy)), fill_col, 1.0)
 				yy += 1
 
-		# 4) кольцо редкости
+		# 4) кольцо редкости (или красное кольцо+крест, если узел закрыт выбором)
 		var ring_col := branch_color
 		var ring_w := 2.0
 		match rarity:
@@ -131,7 +141,19 @@ class NodeWidget extends Control:
 				ring_w = 3.0
 		if dim:
 			ring_col = Color(ring_col, 0.4)
+		if blocked_by_choice:
+			ring_col = Palette.BLOCKED
+			ring_w = 3.0
 		draw_arc(c, r, 0.0, TAU, 48, ring_col, ring_w, true)
+
+		if blocked_by_choice:
+			var k := r * 0.5
+			draw_line(c + Vector2(-k, -k), c + Vector2(k, k), Palette.BLOCKED, 2.0)
+			draw_line(c + Vector2(-k, k), c + Vector2(k, -k), Palette.BLOCKED, 2.0)
+
+		# 5) предпросмотр блокировки при наведении на узел-выбор
+		if preview_blocked:
+			draw_arc(c, r + 4.0, 0.0, TAU, 48, Palette.BLOCKED, 3.0, true)
 
 	func _gui_input(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
@@ -140,6 +162,7 @@ class NodeWidget extends Control:
 
 class EdgesLayer extends Control:
 	var edges: Array = []  # Array of { "a": Vector2, "b": Vector2, "color": Color } — базовые координаты узлов
+	var exclude_edges: Array = []  # Array of { "a": Vector2, "b": Vector2 } — пары взаимоисключающих узлов
 	var pan_offset := Vector2.ZERO
 	var zoom := 1.0
 
@@ -153,6 +176,25 @@ class EdgesLayer extends Control:
 			# псевдо-glow под основной линией
 			draw_polyline(pts, Color(col.r, col.g, col.b, col.a * 0.25), maxf(2.0, 6.0 * zoom), true)
 			draw_polyline(pts, Color(col.r, col.g, col.b, col.a), maxf(1.0, 2.0 * zoom), true)
+
+		for e in exclude_edges:
+			var a: Vector2 = e["a"] * zoom + pan_offset
+			var b: Vector2 = e["b"] * zoom + pan_offset
+			_draw_dashed_line(a, b, Color(Palette.TEXT, 0.7), maxf(1.0, 1.5 * zoom))
+
+	func _draw_dashed_line(a: Vector2, b: Vector2, color: Color, width: float) -> void:
+		var dash := 8.0 * zoom
+		var gap := 6.0 * zoom
+		var diff := b - a
+		var length := diff.length()
+		if length < 0.001:
+			return
+		var dir := diff / length
+		var t := 0.0
+		while t < length:
+			var seg_end := minf(t + dash, length)
+			draw_line(a + dir * t, a + dir * seg_end, color, width)
+			t += dash + gap
 
 	func _draw_grid() -> void:
 		var step := TreeGraph.GRID_STEP * zoom
@@ -246,6 +288,8 @@ func _create_node(n: Dictionary) -> void:
 	var widget := NodeWidget.new()
 	widget.mouse_filter = Control.MOUSE_FILTER_STOP
 	widget.pressed.connect(_on_node_pressed)
+	widget.mouse_entered.connect(_on_node_mouse_entered.bind(n["id"]))
+	widget.mouse_exited.connect(_on_node_mouse_exited.bind(n["id"]))
 	_content.add_child(widget)
 	_node_widgets[n["id"]] = widget
 
@@ -341,10 +385,56 @@ func _rebuild_edges(nodes: Array) -> void:
 				var alpha := 0.9 if int(n["state"]) == NodeState.OWNED else 0.35
 				edges.append({ "a": by_id[p]["pos"], "b": n["pos"], "color": Color(n["color"], alpha) })
 
+	var excl_pairs := {}
+	var excl_edges := []
+	for n in nodes:
+		for ex_id in n.get("excludes", []):
+			if not by_id.has(ex_id):
+				continue
+			var key := _pair_key(n["id"], ex_id)
+			if excl_pairs.has(key):
+				continue
+			excl_pairs[key] = true
+			excl_edges.append({ "a": n["pos"], "b": by_id[ex_id]["pos"] })
+
 	_edges_layer.edges = edges
+	_edges_layer.exclude_edges = excl_edges
 	_edges_layer.pan_offset = pan_offset
 	_edges_layer.zoom = zoom
 	_edges_layer.queue_redraw()
+
+func _pair_key(a: String, b: String) -> String:
+	return "%s|%s" % [a, b] if a < b else "%s|%s" % [b, a]
+
+func _would_block(id: String) -> Array:
+	var n: Dictionary = _nodes_by_id[id]
+	var result := {}
+	for ex_id in n.get("excludes", []):
+		result[ex_id] = true
+	for other_id in _nodes_by_id:
+		if other_id == id:
+			continue
+		var other: Dictionary = _nodes_by_id[other_id]
+		if id in other.get("excludes", []):
+			result[other_id] = true
+	return result.keys()
+
+func _on_node_mouse_entered(id: String) -> void:
+	if not _nodes_by_id.has(id):
+		return
+	var n: Dictionary = _nodes_by_id[id]
+	if int(n["state"]) != NodeState.AVAILABLE:
+		return
+	_preview_blocked = _would_block(id)
+	for bid in _preview_blocked:
+		if _node_widgets.has(bid):
+			_node_widgets[bid].set_preview_blocked(true)
+
+func _on_node_mouse_exited(_id: String) -> void:
+	for bid in _preview_blocked:
+		if _node_widgets.has(bid):
+			_node_widgets[bid].set_preview_blocked(false)
+	_preview_blocked.clear()
 
 func _on_canvas_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:

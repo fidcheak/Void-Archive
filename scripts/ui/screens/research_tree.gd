@@ -3,13 +3,14 @@ extends Control
 
 signal back_pressed
 
-const ROW_H := 160.0   # вертикальный шаг между уровнями (рядами)
-const COL_W := 140.0   # минимальный горизонтальный интервал между узлами ряда
-const BRANCH_ORIGIN := {
-	"machines":  Vector2(0,     0),
-	"cognition": Vector2(-1100, 0),
-	"void":      Vector2(1100,  0),
-	"energy":    Vector2(0,     900),
+const HUB_GAP := 220.0   # отступ от центра до корня ветки
+const ROW_STEP := 160.0  # шаг по глубине (вдоль направления ветки)
+const SPREAD := 150.0    # разброс сиблингов (поперёк направления)
+const BRANCH_DIR := {
+	"machines":  Vector2( 1,  0),   # восток
+	"cognition": Vector2(-1,  0),   # запад
+	"void":      Vector2( 0, -1),   # север
+	"energy":    Vector2( 0,  1),   # юг
 }
 
 var _graph: TreeGraph
@@ -98,6 +99,8 @@ func _nodes() -> Array:
 			"action_label": "Максимум" if maxed else "Изучить (ур. %d→%d)" % [lvl, lvl + 1],
 			"can_act": Research.can_research(r["id"]),
 			"requires": r.get("requires", []),
+			"excludes": r.get("excludes", []),
+			"blocked_by_choice": Research.is_excluded(r["id"]) and lvl == 0,
 		})
 	return result
 
@@ -205,7 +208,8 @@ func _compute_layout() -> Dictionary:
 	var result := {}
 	for b in by_branch:
 		var ids: Array = by_branch[b]
-		var origin: Vector2 = BRANCH_ORIGIN.get(b, Vector2.ZERO)
+		var dir: Vector2 = BRANCH_DIR.get(b, Vector2(1, 0))
+		var perp := Vector2(-dir.y, dir.x)
 
 		# 1) глубина = длина самой длинной цепочки предпосылок внутри ветки
 		var depth := {}
@@ -250,9 +254,9 @@ func _compute_layout() -> Dictionary:
 				avg_prefx += prefx[id]
 			avg_prefx /= n
 
-			var span := float(n - 1) * COL_W
+			var span := float(n - 1) * SPREAD
 			for i in range(n):
-				x[row[i]] = avg_prefx - span * 0.5 + float(i) * COL_W
+				x[row[i]] = avg_prefx - span * 0.5 + float(i) * SPREAD
 
 		# 4) полировка сверху-вниз: родитель подвинут к среднему x своих детей-в-ветке
 		var children := {}
@@ -272,18 +276,19 @@ func _compute_layout() -> Dictionary:
 						sum += x[c]
 					x[id] = sum / children[id].size()
 
-		# 5) финальная раздвижка: полировка могла свести соседей вместе — гарантируем интервал >= COL_W
+		# 5) финальная раздвижка: полировка могла свести соседей вместе — гарантируем интервал >= SPREAD
 		for d in rows:
 			var row: Array = rows[d].duplicate()
 			row.sort_custom(func(a, c): return x[a] < x[c])
 			for i in range(1, row.size()):
-				if x[row[i]] - x[row[i - 1]] < COL_W:
-					x[row[i]] = x[row[i - 1]] + COL_W
+				if x[row[i]] - x[row[i - 1]] < SPREAD:
+					x[row[i]] = x[row[i - 1]] + SPREAD
 
-		# 6) итоговые позиции (y растёт вверх с глубиной)
+		# 6) итоговые позиции: ось вдоль направления ветки, разброс — поперёк
 		for id in ids:
 			var d: int = depth[id]
-			result[id] = Vector2(origin.x + x[id], origin.y - float(d) * ROW_H)
+			var axis := HUB_GAP + float(d) * ROW_STEP
+			result[id] = dir * axis + perp * x[id]
 
 	return result
 
