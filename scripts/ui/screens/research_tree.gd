@@ -16,6 +16,7 @@ const BRANCH_DIR := {
 var _graph: TreeGraph
 var _compute_label: Label
 var _layout: Dictionary = {}   # id -> Vector2 (авто-раскладка по слоям)
+var _acc := 0.0
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -37,10 +38,10 @@ func _ready() -> void:
 	_graph.build()
 
 	Events.research_completed.connect(_on_research_completed)
-	Events.resource_changed.connect(_on_resource_changed)
+	Events.tick.connect(_on_tick)
 	visibility_changed.connect(_on_visibility_changed)
 
-	_refresh()
+	_refresh_full()
 
 func _build_header() -> Control:
 	var panel := PanelContainer.new()
@@ -75,32 +76,58 @@ func _nodes() -> Array:
 	for b in ResearchDB.get_branches():
 		branch_colors[b["id"]] = b["color"]
 
+	# один проход по research: множества owned (id->level) и excluded (id->true),
+	# вместо per-node перебора в Research.is_excluded/prereqs_met/is_available
+	var owned := {}
+	for id in GameState.research:
+		var lvl := int(GameState.research[id])
+		if lvl >= 1:
+			owned[id] = lvl
+	var excluded := {}
+	for r in ResearchDB.get_list():
+		for ex in r.get("excludes", []):
+			if owned.has(r["id"]):
+				excluded[ex] = true
+			if owned.has(ex):
+				excluded[r["id"]] = true
+
 	var result := []
 	for r in ResearchDB.get_list():
-		var lvl := Research.level(r["id"])
-		var max_lvl := Research.max_level(r["id"])
-		var maxed := Research.is_maxed(r["id"])
+		var id: String = r["id"]
+		var lvl := int(owned.get(id, 0))
+		var max_lvl := Research.max_level(id)
+		var maxed := lvl >= max_lvl
+		var is_excl := excluded.has(id)
+
+		var prereqs_ok := true
+		for p in r.get("requires", []):
+			if not owned.has(p):
+				prereqs_ok = false
+				break
+
+		var flag := String(r.get("requires_flag", ""))
+		var flag_ok := flag == "" or bool(GameState.flags.get(flag, false))
 
 		var state := TreeGraph.NodeState.LOCKED
 		if lvl >= 1:
 			state = TreeGraph.NodeState.OWNED
-		elif Research.is_available(r["id"]):
+		elif not r.get("stub", false) and not is_excl and flag_ok and not maxed and prereqs_ok:
 			state = TreeGraph.NodeState.AVAILABLE
 
 		result.append({
-			"id": r["id"], "title": r["name"], "desc": String(r.get("desc", "")),
-			"pos": _layout.get(r["id"], r["pos"]), "color": branch_colors.get(r["branch"], Palette.TEXT_3),
+			"id": id, "title": r["name"], "desc": String(r.get("desc", "")),
+			"pos": _layout.get(id, r["pos"]), "color": branch_colors.get(r["branch"], Palette.TEXT_3),
 			"rarity": r.get("rarity", "common"),
 			"state": state,
 			"level": lvl, "max_level": max_lvl,
 			"cost_text": _cost_text(r),
 			"effect_text": _effect_text(r),
-			"req_text": _req_text(r),
+			"req_text": _req_text(r, is_excl),
 			"action_label": "Максимум" if maxed else "Изучить (ур. %d→%d)" % [lvl, lvl + 1],
-			"can_act": Research.can_research(r["id"]),
+			"can_act": state == TreeGraph.NodeState.AVAILABLE and Research.can_afford(id),
 			"requires": r.get("requires", []),
 			"excludes": r.get("excludes", []),
-			"blocked_by_choice": Research.is_excluded(r["id"]) and lvl == 0,
+			"blocked_by_choice": is_excl and lvl == 0,
 		})
 	return result
 
@@ -153,8 +180,8 @@ func _building_unlock(node_id: String) -> Dictionary:
 			return b
 	return {}
 
-func _req_text(r: Dictionary) -> String:
-	if Research.is_excluded(r["id"]):
+func _req_text(r: Dictionary, is_excl: bool) -> String:
+	if is_excl:
 		return "Путь закрыт (выбран другой узел)"
 
 	var flag := String(r.get("requires_flag", ""))
@@ -180,19 +207,26 @@ func _building_name(b_id: String) -> String:
 	return b_id
 
 func _on_research_completed(_id: String) -> void:
-	_refresh()
-
-func _on_resource_changed(_id: String, _value: float) -> void:
-	_refresh()
+	_refresh_full()
 
 func _on_visibility_changed() -> void:
 	if visible:
-		_refresh()
+		_refresh_full()
 
-func _refresh() -> void:
+func _refresh_full() -> void:
 	if not is_visible_in_tree(): return
 	_compute_label.text = Format.num(GameState.get_resource("compute"))
 	_graph.refresh()
+
+func _on_tick(delta: float) -> void:
+	_acc += delta
+	if _acc < 0.1: return
+	_acc = 0.0
+	if not is_visible_in_tree(): return
+	_compute_label.text = Format.num(GameState.get_resource("compute"))
+	var sel := _graph.get_selected_id()
+	if sel != "":
+		_graph.refresh_action_state(Research.can_research(sel))
 
 # ---- авто-раскладка по слоям: глубина -> ряд, барицентр предпосылок -> столбец (Слой D) ----
 func _compute_layout() -> Dictionary:

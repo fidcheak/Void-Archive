@@ -64,12 +64,13 @@ class NodeWidget extends Control:
 		id = n["id"]
 		branch_color = n["color"]
 		rarity = String(n.get("rarity", "common"))
-		state = int(n["state"])
-		blocked_by_choice = bool(n.get("blocked_by_choice", false))
+		var new_state := int(n["state"])
+		var new_blocked := bool(n.get("blocked_by_choice", false))
 
 		var r := radius()
 		var new_size := Vector2.ONE * (r + TreeGraph.WIDGET_PAD) * 2.0
-		if size != new_size:
+		var size_changed := size != new_size
+		if size_changed:
 			size = new_size
 			pivot_offset = size / 2.0
 
@@ -77,8 +78,12 @@ class NodeWidget extends Control:
 		if n.has("level"):
 			var max_lvl := maxi(int(n.get("max_level", 1)), 1)
 			target = float(int(n["level"])) / float(max_lvl)
-		elif state == TreeGraph.NodeState.OWNED:
+		elif new_state == TreeGraph.NodeState.OWNED:
 			target = 1.0
+
+		var changed := not _initialized or size_changed or new_state != state or new_blocked != blocked_by_choice
+		state = new_state
+		blocked_by_choice = new_blocked
 
 		if not _initialized:
 			_anim_fill = target
@@ -88,7 +93,8 @@ class NodeWidget extends Control:
 			t.tween_method(_set_anim_fill, _anim_fill, target, TreeGraph.FILL_ANIM_TIME) \
 				.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
-		queue_redraw()
+		if changed:
+			queue_redraw()
 
 	func _set_anim_fill(v: float) -> void:
 		_anim_fill = v
@@ -283,6 +289,15 @@ func refresh() -> void:
 
 	if _detail.visible and _nodes_by_id.has(_selected_id):
 		_update_detail(_nodes_by_id[_selected_id])
+
+func get_selected_id() -> String:
+	return _selected_id
+
+func refresh_action_state(can_act: bool) -> void:
+	if not _detail.visible:
+		return
+	_detail_action.disabled = not can_act
+	_detail_action.modulate.a = 1.0 if can_act else 0.5
 
 func _create_node(n: Dictionary) -> void:
 	var widget := NodeWidget.new()
