@@ -11,6 +11,10 @@ var _power_bar: ProgressBar
 var _power_bar_fill: StyleBoxFlat
 var _data_mult_label: Label
 var _data_top_labels: Array = []
+var _compute_mult_label: Label
+var _compute_top_labels: Array = []
+var _energy_eff_label: Label
+var _energy_top_labels: Array = []
 var _box: HBoxContainer
 var _acc := 0.0
 
@@ -19,7 +23,7 @@ const BAR_HEIGHT := 10.0
 const GROUP_SEPARATION := 12
 const NAV_BUTTON_SIZE := 34.0
 const VALUE_FONT_SIZE := 20
-const WIDGET_WIDTH := 130.0
+const WIDGET_WIDTH := 155.0
 const CRYPTO_WIDGET_WIDTH := 190.0
 const TOP_PRODUCERS_COUNT := 3
 
@@ -73,7 +77,7 @@ func _build_data_module() -> Control:
 	_data_mult_label = Label.new()
 	_data_mult_label.add_theme_color_override("font_color", Palette.TEXT_2)
 	_data_mult_label.add_theme_font_size_override("font_size", 10)
-	_data_mult_label.clip_text = true
+	_data_mult_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	body.add_child(_data_mult_label)
 
 	_data_top_labels.clear()
@@ -81,7 +85,7 @@ func _build_data_module() -> Control:
 		var l := Label.new()
 		l.add_theme_color_override("font_color", Palette.TEXT_3)
 		l.add_theme_font_size_override("font_size", 10)
-		l.clip_text = true
+		l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		body.add_child(l)
 		_data_top_labels.append(l)
 
@@ -108,6 +112,25 @@ func _build_compute_module() -> Control:
 	body.add_child(_compute_rate_label)
 
 	body.add_child(_accent(Palette.COMPUTE))
+
+	body.add_child(HSeparator.new())
+
+	_compute_mult_label = Label.new()
+	_compute_mult_label.add_theme_color_override("font_color", Palette.TEXT_2)
+	_compute_mult_label.add_theme_font_size_override("font_size", 10)
+	_compute_mult_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	body.add_child(_compute_mult_label)
+
+	_compute_top_labels.clear()
+	for i in range(TOP_PRODUCERS_COUNT):
+		var l := Label.new()
+		l.add_theme_color_override("font_color", Palette.TEXT_3)
+		l.add_theme_font_size_override("font_size", 10)
+		l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		body.add_child(l)
+		_compute_top_labels.append(l)
+
+	_refresh_compute_extra()
 
 	return m["panel"]
 
@@ -144,6 +167,25 @@ func _build_energy_module() -> Control:
 	_power_bar.add_theme_stylebox_override("fill", _power_bar_fill)
 
 	body.add_child(_power_bar)
+
+	body.add_child(HSeparator.new())
+
+	_energy_eff_label = Label.new()
+	_energy_eff_label.add_theme_color_override("font_color", Palette.TEXT_2)
+	_energy_eff_label.add_theme_font_size_override("font_size", 10)
+	_energy_eff_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	body.add_child(_energy_eff_label)
+
+	_energy_top_labels.clear()
+	for i in range(TOP_PRODUCERS_COUNT):
+		var l := Label.new()
+		l.add_theme_color_override("font_color", Palette.TEXT_3)
+		l.add_theme_font_size_override("font_size", 10)
+		l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		body.add_child(l)
+		_energy_top_labels.append(l)
+
+	_refresh_energy_extra()
 
 	return m["panel"]
 
@@ -186,15 +228,18 @@ func _on_tick(delta: float) -> void:
 	_compute_rate_label.text = Format.rate(GameState.production_rates.get("compute", 0.0))
 	_refresh_energy()
 	_refresh_data_extra()
+	_refresh_compute_extra()
+	_refresh_energy_extra()
 
 func _refresh_data_extra() -> void:
-	_data_mult_label.text = "Общий множитель: ×%s" % Format.num(Research.get_production_mult("data"))
+	_data_mult_label.text = "×%s (множ.)" % Format.num(Research.get_production_mult("data"))
 
 	var top := _top_data_producers()
 	for i in range(_data_top_labels.size()):
 		if i < top.size():
 			var e: Dictionary = top[i]
-			_data_top_labels[i].text = "%s ×%d — ×%s" % [e["name"], e["count"], Format.num(e["mult"])]
+			var short_name := String(e["name"]).left(7).rstrip(" ")
+			_data_top_labels[i].text = "%s ×%d ×%s" % [short_name, e["count"], Format.num(e["mult"])]
 		else:
 			_data_top_labels[i].text = ""
 
@@ -213,6 +258,62 @@ func _top_data_producers() -> Array:
 			"contribution": produce * float(n) * bmult,
 		})
 	entries.sort_custom(func(a, b): return a["contribution"] > b["contribution"])
+	return entries.slice(0, TOP_PRODUCERS_COUNT)
+
+func _refresh_compute_extra() -> void:
+	_compute_mult_label.text = "×%s (множ.)" % Format.num(Research.get_production_mult("compute"))
+	var top := _top_compute_producers()
+	for i in range(_compute_top_labels.size()):
+		if i < top.size():
+			var e: Dictionary = top[i]
+			_compute_top_labels[i].text = "%s ×%d ×%s" % [String(e["name"]).left(7), e["count"], Format.num(e["mult"])]
+		else:
+			_compute_top_labels[i].text = ""
+
+func _top_compute_producers() -> Array:
+	var entries := []
+	for b in BuildingsDB.get_list():
+		var n := Buildings.count(b["id"])
+		if n <= 0: continue
+		var produce := float(b.get("produces", {}).get("compute", 0.0))
+		if produce <= 0.0: continue
+		var bmult := Research.get_building_mult(b["id"])
+		entries.append({
+			"name": String(b.get("name", b["id"])),
+			"count": n,
+			"mult": bmult,
+			"contribution": produce * float(n) * bmult,
+		})
+	entries.sort_custom(func(a, b): return a["contribution"] > b["contribution"])
+	return entries.slice(0, TOP_PRODUCERS_COUNT)
+
+func _refresh_energy_extra() -> void:
+	var demand_mult := Research.get_energy_demand_mult()
+	if demand_mult < 1.0:
+		_energy_eff_label.text = "КПД ×%s" % Format.num(demand_mult)
+	else:
+		_energy_eff_label.text = "+%s база" % Format.num(Research.get_base_energy_bonus())
+	var top := _top_energy_producers()
+	for i in range(_energy_top_labels.size()):
+		if i < top.size():
+			var e: Dictionary = top[i]
+			_energy_top_labels[i].text = "%s +%s/с" % [String(e["name"]).left(7), Format.num(e["rate"])]
+		else:
+			_energy_top_labels[i].text = ""
+
+func _top_energy_producers() -> Array:
+	var entries := []
+	for b in BuildingsDB.get_list():
+		var n := Buildings.count(b["id"])
+		if n <= 0: continue
+		var produce := float(b.get("produces", {}).get("energy", 0.0))
+		if produce <= 0.0: continue
+		entries.append({
+			"name": String(b.get("name", b["id"])),
+			"count": n,
+			"rate": produce * float(n),
+		})
+	entries.sort_custom(func(a, b): return a["rate"] > b["rate"])
 	return entries.slice(0, TOP_PRODUCERS_COUNT)
 
 func _refresh_energy() -> void:

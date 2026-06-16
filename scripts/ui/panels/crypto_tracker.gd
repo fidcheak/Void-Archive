@@ -12,18 +12,28 @@ class CoinButton:
 	var coin_color := Color.WHITE
 	var ticker := ""
 
+	var _ticker_label: Label
+
 	func _ready() -> void:
 		custom_minimum_size = COIN_SIZE
 		mouse_filter = Control.MOUSE_FILTER_STOP
+		clip_contents = false
+
+		_ticker_label = Label.new()
+		_ticker_label.text = ticker
+		_ticker_label.add_theme_color_override("font_color", coin_color)
+		_ticker_label.add_theme_font_size_override("font_size", COIN_FONT_SIZE)
+		_ticker_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_ticker_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_ticker_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_ticker_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_ticker_label)
 
 	func _draw() -> void:
 		var c := size * 0.5
 		var r := minf(size.x, size.y) * 0.5 - 2.0
 		draw_circle(c, r, Palette.BG_DEEP)
 		draw_arc(c, r, 0.0, TAU, 32, coin_color, 2.0)
-		var font := ThemeBuilder.mono_font()
-		var text_size := font.get_string_size(ticker, HORIZONTAL_ALIGNMENT_CENTER, -1, COIN_FONT_SIZE)
-		draw_string(font, Vector2(c.x - text_size.x * 0.5, c.y + text_size.y * 0.3), ticker, HORIZONTAL_ALIGNMENT_CENTER, -1, COIN_FONT_SIZE, coin_color)
 
 	func _gui_input(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:

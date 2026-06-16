@@ -98,20 +98,26 @@ static func research(id: String) -> bool:
 
 # ---- множители для Production ----
 static func _rebuild_cache() -> void:
-	_prod_mult.clear()
-	_building_mult.clear()
 	_base_energy_bonus = 0.0
 	_energy_demand_mult = 1.0
+	var prod_bonus := {}
+	var build_bonus := {}
 	for id in GameState.research:
 		var lvl := int(GameState.research[id])
 		if lvl <= 0: continue
 		var eff: Dictionary = get_def(id).get("effects", {})
 		for res in eff.get("mult_production", {}):
-			_prod_mult[res] = float(_prod_mult.get(res, 1.0)) * pow(float(eff["mult_production"][res]), lvl)
+			prod_bonus[res] = float(prod_bonus.get(res, 0.0)) + (float(eff["mult_production"][res]) - 1.0) * lvl
 		for bid in eff.get("mult_building", {}):
-			_building_mult[bid] = float(_building_mult.get(bid, 1.0)) * pow(float(eff["mult_building"][bid]), lvl)
+			build_bonus[bid] = float(build_bonus.get(bid, 0.0)) + (float(eff["mult_building"][bid]) - 1.0) * lvl
 		_base_energy_bonus += float(eff.get("add_base_energy", 0.0)) * lvl
 		_energy_demand_mult *= pow(float(eff.get("mult_energy_demand", 1.0)), lvl)
+	_prod_mult.clear()
+	_building_mult.clear()
+	for res in prod_bonus:
+		_prod_mult[res] = 1.0 + prod_bonus[res]
+	for bid in build_bonus:
+		_building_mult[bid] = 1.0 + build_bonus[bid]
 	_dirty = false
 
 static func get_production_mult(resource: String) -> float:

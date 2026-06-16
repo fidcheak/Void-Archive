@@ -1,6 +1,6 @@
 extends Control
 
-const CORE_SIZE := 240.0
+const CORE_SIZE := 200.0
 const TERMINAL_WIDTH := 230.0
 const LEFT_RATIO := 55.0
 const RIGHT_RATIO := 45.0
@@ -28,10 +28,15 @@ func _ready() -> void:
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ops_screen.add_child(bg)
 
+	var edge_margin := MarginContainer.new()
+	edge_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right", "top", "bottom"]:
+		edge_margin.add_theme_constant_override("margin_%s" % side, int(Palette.EDGE))
+	_ops_screen.add_child(edge_margin)
+
 	var root_split := HBoxContainer.new()
-	root_split.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	root_split.add_theme_constant_override("separation", 8)
-	_ops_screen.add_child(root_split)
+	root_split.add_theme_constant_override("separation", int(Palette.GAP))
+	edge_margin.add_child(root_split)
 
 	var left_zone := VBoxContainer.new()
 	left_zone.size_flags_horizontal = Control.SIZE_EXPAND_FILL

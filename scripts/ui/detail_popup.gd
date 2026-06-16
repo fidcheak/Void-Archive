@@ -20,12 +20,14 @@ func _ready() -> void:
 
 	_panel = PanelContainer.new()
 	_panel.custom_minimum_size = Vector2(POPUP_WIDTH, 0)
+	_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	_scrim.add_child(_panel)
 
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_%s" % side, 10)
+		margin.add_theme_constant_override("margin_%s" % side, int(Palette.PAD))
 	_panel.add_child(margin)
 
 	var box := VBoxContainer.new()
@@ -61,7 +63,6 @@ func show_at(global_pos: Vector2, title: String, lines: Array, title_color: Colo
 		var l := Label.new()
 		l.text = String(line)
 		l.add_theme_color_override("font_color", Palette.TEXT_2)
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_lines_box.add_child(l)
 
 	_scrim.visible = true
@@ -75,8 +76,8 @@ func _clamp_to_viewport(global_pos: Vector2) -> void:
 	var vp_size := get_viewport().get_visible_rect().size
 	var panel_size := _panel.size
 	var p := global_pos + OFFSET
-	p.x = clampf(p.x, 0.0, maxf(0.0, vp_size.x - panel_size.x))
-	p.y = clampf(p.y, 0.0, maxf(0.0, vp_size.y - panel_size.y))
+	p.x = clampf(p.x, Palette.EDGE, maxf(Palette.EDGE, vp_size.x - panel_size.x - Palette.EDGE))
+	p.y = clampf(p.y, Palette.EDGE, maxf(Palette.EDGE, vp_size.y - panel_size.y - Palette.EDGE))
 	_panel.position = p
 
 func hide_popup() -> void:

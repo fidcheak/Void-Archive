@@ -2,6 +2,7 @@ class_name AnomalyBanner
 extends PanelContainer
 
 const BAR_WIDTH := 220.0
+const SLOT_HEIGHT := 34.0
 
 var _name_label: Label
 var _effect_label: Label
@@ -12,6 +13,8 @@ var _acc := 0.0
 
 func _ready() -> void:
 	size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	custom_minimum_size = Vector2(0, SLOT_HEIGHT)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var box := HBoxContainer.new()
 	add_child(box)
@@ -56,9 +59,12 @@ func _on_anomaly_ended(_id: String) -> void:
 func _refresh() -> void:
 	var anomaly := GameState.active_anomaly
 	if anomaly.is_empty():
-		visible = false
+		modulate.a = 0.0
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		return
-	visible = true
+
+	modulate.a = 1.0
+	mouse_filter = Control.MOUSE_FILTER_PASS
 
 	var color: Color = Palette.SIGNAL if anomaly.get("type", "") == "signal" else Palette.CORRUPT
 
