@@ -1,25 +1,53 @@
 class_name AbilityBar
-extends PanelContainer
+extends VBoxContainer
 
-const BUTTON_SIZE := 56.0
+const BUTTON_SIZE := 40.0
 
 class AbilityButton:
 	extends Control
 
 	signal activate_pressed
 
-	var glyph := ""
 	var ready_state := false
 	var active_state := false
-	var cooldown_fraction := 0.0  # 1.0 = только начался откат, 0.0 = готово
+	var cooldown_fraction := 0.0
 	var seconds_text := ""
 
 	var _hovered := false
 	var _pressed_down := false
+	var _glyph_label: Label
+	var _timer_label: Label
 
 	func _ready() -> void:
 		custom_minimum_size = Vector2(BUTTON_SIZE, BUTTON_SIZE)
 		mouse_filter = Control.MOUSE_FILTER_STOP
+		clip_contents = false
+
+		_glyph_label = Label.new()
+		_glyph_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_glyph_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_glyph_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_glyph_label.add_theme_font_size_override("font_size", 20)
+		_glyph_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_glyph_label)
+
+		_timer_label = Label.new()
+		_timer_label.anchor_left = 0.0
+		_timer_label.anchor_right = 1.0
+		_timer_label.anchor_top = 0.6
+		_timer_label.anchor_bottom = 1.0
+		_timer_label.offset_left = 0.0
+		_timer_label.offset_right = 0.0
+		_timer_label.offset_top = 0.0
+		_timer_label.offset_bottom = 0.0
+		_timer_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_timer_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		_timer_label.add_theme_font_size_override("font_size", 12)
+		_timer_label.add_theme_color_override("font_color", Palette.TEXT_2)
+		_timer_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_timer_label.visible = false
+		add_child(_timer_label)
+
 		mouse_entered.connect(func():
 			_hovered = true
 			queue_redraw())
@@ -27,6 +55,19 @@ class AbilityButton:
 			_hovered = false
 			_pressed_down = false
 			queue_redraw())
+
+	func set_glyph(g: String) -> void:
+		if _glyph_label:
+			_glyph_label.text = g
+
+	func refresh_display() -> void:
+		_glyph_label.add_theme_color_override("font_color",
+			Palette.TEXT if (ready_state or active_state) else Palette.TEXT_MUTE)
+		var show_timer := cooldown_fraction > 0.0 and seconds_text != ""
+		_timer_label.visible = show_timer
+		if show_timer:
+			_timer_label.text = seconds_text
+		queue_redraw()
 
 	func _gui_input(event: InputEvent) -> void:
 		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
@@ -60,18 +101,8 @@ class AbilityButton:
 			border_width = 2.0
 		draw_arc(c, r, 0.0, TAU, 48, border_color, border_width)
 
-		var font := ThemeBuilder.mono_font()
-		var glyph_color := Palette.TEXT if (ready_state or active_state) else Palette.TEXT_MUTE
-		var fs := 22
-		var ts := font.get_string_size(glyph, HORIZONTAL_ALIGNMENT_CENTER, -1, fs)
-		draw_string(font, Vector2(c.x - ts.x * 0.5, c.y + ts.y * 0.3), glyph, HORIZONTAL_ALIGNMENT_CENTER, -1, fs, glyph_color)
-
 		if cooldown_fraction > 0.0:
 			_draw_cooldown_sector(c, r)
-			if seconds_text != "":
-				var fs2 := 12
-				var ts2 := font.get_string_size(seconds_text, HORIZONTAL_ALIGNMENT_CENTER, -1, fs2)
-				draw_string(font, Vector2(c.x - ts2.x * 0.5, c.y + r * 0.65 + ts2.y * 0.3), seconds_text, HORIZONTAL_ALIGNMENT_CENTER, -1, fs2, Palette.TEXT_2)
 
 	func _draw_cooldown_sector(c: Vector2, r: float) -> void:
 		var points := PackedVector2Array()
@@ -84,25 +115,21 @@ class AbilityButton:
 			points.append(c + Vector2(cos(t), sin(t)) * r)
 		draw_colored_polygon(points, Color(0.0, 0.0, 0.0, 0.55))
 
-var _buttons := {}  # id -> AbilityButton
+var _buttons := {}
 var _acc := 0.0
 
 func _ready() -> void:
-	size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	var box := HBoxContainer.new()
-	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_theme_constant_override("separation", 12)
-	add_child(box)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_theme_constant_override("separation", 8)
 
 	for a in AbilitiesDB.get_list():
 		var col := VBoxContainer.new()
+		col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		col.alignment = BoxContainer.ALIGNMENT_CENTER
 		col.add_theme_constant_override("separation", 2)
 		col.visible = false
 
 		var btn := AbilityButton.new()
-		btn.glyph = _glyph_for(a)
 		btn.activate_pressed.connect(_on_pressed.bind(a["id"]))
 		col.add_child(btn)
 
@@ -111,9 +138,11 @@ func _ready() -> void:
 		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		name_label.add_theme_font_size_override("font_size", 10)
 		name_label.add_theme_color_override("font_color", Palette.TEXT_2)
+		name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		col.add_child(name_label)
 
-		box.add_child(col)
+		add_child(col)
+		btn.set_glyph(_glyph_for(a))
 		_buttons[a["id"]] = { "root": col, "button": btn }
 
 	Events.tick.connect(_on_tick)
@@ -182,6 +211,6 @@ func _refresh() -> void:
 			btn.cooldown_fraction = 0.0
 			btn.seconds_text = ""
 
-		btn.queue_redraw()
+		btn.refresh_display()
 
 	visible = any_unlocked

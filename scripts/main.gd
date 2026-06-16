@@ -12,6 +12,8 @@ var _tree_screen: ResearchTreeScreen
 var _prestige_screen: PrestigeScreen
 var _mining_screen: MiningScreen
 var _floating: FloatingText
+var _terminal: TerminalPanel
+var _ability_bar: AbilityBar
 
 func _ready() -> void:
 	theme = ThemeBuilder.build()
@@ -65,11 +67,11 @@ func _ready() -> void:
 	bottom_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left_zone.add_child(bottom_row)
 
-	var terminal := TerminalPanel.new()
-	terminal.custom_minimum_size = Vector2(TERMINAL_WIDTH, 0)
-	terminal.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	terminal.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	bottom_row.add_child(terminal)
+	_terminal = TerminalPanel.new()
+	_terminal.custom_minimum_size = Vector2(TERMINAL_WIDTH, 0)
+	_terminal.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_terminal.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	bottom_row.add_child(_terminal)
 
 	var center_col := VBoxContainer.new()
 	center_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -84,9 +86,6 @@ func _ready() -> void:
 	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	center_col.add_child(center)
 	center.add_child(_build_core())
-
-	var ability_bar := AbilityBar.new()
-	center_col.add_child(ability_bar)
 
 	var click_panel := ClickPanel.new()
 	click_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -122,6 +121,9 @@ func _ready() -> void:
 	_mining_screen.back_pressed.connect(_on_mining_back_pressed)
 	add_child(_mining_screen)
 
+	_ability_bar = AbilityBar.new()
+	_ops_screen.add_child(_ability_bar)
+
 	_floating = FloatingText.new()
 	_floating.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_floating.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -132,7 +134,14 @@ func _ready() -> void:
 	Events.tick.connect(_on_tick)
 	Events.click_performed.connect(_on_click_performed)
 
+	await get_tree().process_frame
+	_position_ability_bar()
+
 	SaveManager.load_game()
+
+func _position_ability_bar() -> void:
+	var t_rect := _terminal.get_global_rect()
+	_ability_bar.position = Vector2(t_rect.end.x + Palette.GAP, t_rect.position.y + 60.0)
 
 func _on_tree_button_pressed() -> void:
 	_ops_screen.visible = false
